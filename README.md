@@ -1,2 +1,3 @@
 # TweenPlus
-An open-source Roblox TweenService replacement with more data types, better lerping, better performance, and no sacrifices.
+An open-source Roblox TweenService replacement with perks like
+more data types, better lerping, better performance, and more.
