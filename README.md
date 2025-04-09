@@ -12,7 +12,7 @@ datatypes, accurate color interpolation and more customization.
 <br>
 
 # 🌟 More capabilities!
-With all the features of TweenService,
+With all the features of TweenService,<br>
 and many new and amazing features:
 - [Attributes](https://create.roblox.com/docs/scripting/attributes) support.
 - Advanced properties:
@@ -25,7 +25,7 @@ and many new and amazing features:
 - Intuitive custom TweenInfo table.
 - Accurate color interpolation ([Oklab](https://observablehq.com/@aras-p/oklab-interpolation-test)).
 
-With all [easing styles](https://create.roblox.com/docs/reference/engine/enums/EasingStyle) that TweenService provides,
+With all [easing styles](https://create.roblox.com/docs/reference/engine/enums/EasingStyle) that TweenService provides,<br>
 and an additional `OutIn` easing direction for all styles.
 <br>
 <br>
