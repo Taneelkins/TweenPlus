@@ -8,38 +8,34 @@ local function objectLerp(a, b, t)
 end
 
 local function commonPrefix(a, b)
-	local aLen = utf8.len(a)
-	local bLen = utf8.len(b)
-	local minLen = if aLen < bLen then aLen else bLen
+	local aLength = utf8.len(a)
+	local bLength = utf8.len(b)
+	local minLength = if aLength < bLength then aLength else bLength
 	
-	for index = 1, minLen, 1 do
-		local aStart = utf8.offset(a, index)
-		local bStart = utf8.offset(b, index)
-		local aChar = utf8.codepoint(a, aStart)
-		local bChar = utf8.codepoint(b, bStart)
+	for index = 1, minLength, 1 do
+		local aPosition = utf8.offset(a, index)
+		local bPosition = utf8.offset(b, index)
 		
-		if aChar ~= bChar then
-			return utf8.len(utf8.sub(a, 1, index - 1))
-		end
-	end
-	return minLen
-end
-local function commonSuffix(a, b, prefixLen)
-	local aLen = utf8.len(a)
-	local bLen = utf8.len(b)
-	local maxLen = math.min(aLen - prefixLen, bLen - prefixLen)
-	
-	for index = 1, maxLen, 1 do
-		local aPos = utf8.offset(a, -index)
-		local bPos = utf8.offset(b, -index)
-		local aChar = utf8.codepoint(a, aPos)
-		local bChar = utf8.codepoint(b, bPos)
-		
-		if aChar ~= bChar then
+		if utf8.codepoint(a, aPosition) ~= utf8.codepoint(b, bPosition) then
 			return index - 1
 		end
 	end
-	return maxLen
+	return minLength
+end
+local function commonSuffix(a, b, prefixLen)
+	local aLength = utf8.len(a)
+	local bLength = utf8.len(b)
+	local maxLength = if aLength < bLength then aLength - prefixLen else bLength - prefixLen
+	
+	for index = 1, maxLength, 1 do
+		local aPosition = utf8.offset(a, -index)
+		local bPosition = utf8.offset(b, -index)
+		
+		if utf8.codepoint(a, aPosition) ~= utf8.codepoint(b, bPosition) then
+			return index - 1
+		end
+	end
+	return maxLength
 end
 
 local function rgbToOklab(r, g, b)
@@ -70,7 +66,7 @@ local function oklabToRGB(l, a, b)
 	local s = l - 0.0894841775*a - 1.2914855480*b
 	local l = l + 0.3963377774*a + 0.2158037573*b
 	
-	-- Cube values using multiplication.
+	-- Cube values.
 	l = l*l*l
 	m = m*m*m
 	s = s*s*s
