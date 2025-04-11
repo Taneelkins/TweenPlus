@@ -13,7 +13,7 @@
      ====           ======    ======      ========================   ====     ======        :::     
      ====            ====      ====       ========================   ====       ====                
 
-v1.0.0
+v1.1.0
 
 An open-source tweening module for Roblox, featuring advanced
 datatypes, accurate color interpolation and more customization.
@@ -23,7 +23,7 @@ GitHub:
 https://github.com/AlexanderLindholt/TweenPlus
 
 Devforum:
-https://devforum.roblox.com/t/
+https://devforum.roblox.com/t/3599638
 
 
 --------------------------------------------------------------------------------
@@ -54,8 +54,6 @@ SOFTWARE.
 
 local RunService = game:GetService("RunService")
 
-local heartbeat = RunService.Heartbeat
-
 local dataTypes = require(script.DataTypes)
 local normalDataTypes = dataTypes.Normal
 local advancedDataTypes = dataTypes.Advanced
@@ -66,8 +64,11 @@ local signalPlus = require(script.SignalPlus)
 
 -- Defaults.
 local defaultInverseTime = 1 -- 1/time.
+
 local defaultEasingStyle = "Linear"
 local defaultEasingDirection = "In"
+
+local defaultUpdateEvent = RunService.PostSimulation
 
 -- Types.
 export type Tween = {
@@ -119,12 +120,21 @@ export type Customization = {
 	Reverses: boolean,
 	DelayTime: number,
 	
-	FPS: number
+	FPS: number,
+	
+	UpdateEvent: "PostSimulation" | "PreSimulation" | "PreRender"
 }
 type CreateTween = typeof(
 	-- Creates a new tween.
-	function(instance: Instance, values: {[string]: any}, tweenInfo: Customization): Tween end
+	function(instance: Instance, values: {[string]: any}, customization: Customization): Tween end
 )
+
+-- List for validity checks.
+local updateEvents = {
+	PostSimulation = true,
+	PreSimulation = true,
+	PreRender = true
+}
 
 -- Module.
 local instanceTweens = {}
@@ -166,6 +176,8 @@ local function play(tween, instance, tweens)
 	local reverses = tween.Reverses
 	local delayTime = tween.DelayTime
 	local interval = tween.Interval
+	
+	local updateEvent = tween.UpdateEvent
 	
 	-- Play loop.
 	while true do
@@ -243,11 +255,11 @@ local function play(tween, instance, tweens)
 		if interval then -- If FPS inputted.
 			local intervalStart = time()
 			while true do
-				heartbeat:Wait()
+				updateEvent:Wait()
 				if time() - intervalStart >= interval then break end
 			end
 		else
-			heartbeat:Wait()
+			updateEvent:Wait()
 		end
 		
 		-- Ensure tween is still supposed to play.
@@ -284,7 +296,7 @@ local tweenClass = table.freeze({__index = table.freeze({
 			for otherTween, otherValues in tweens do
 				for value in otherValues do
 					if values[value] then
-						if otherTween.Playing then cancel(otherTween) end
+						cancel(otherTween)
 						tweens[otherTween] = nil
 						break
 					end
@@ -336,10 +348,13 @@ local tweenClass = table.freeze({__index = table.freeze({
 		coroutine.resume(coroutine.create(play), tween, instance, tweens)
 	end,
 	Stop = function(tween)
-		if tween.Playing then
-			tween.Paused = time()
-			cancel(tween)
-		end
+		-- Verify playback.
+		if not tween.Playing then return end
+		
+		-- Save the current time as a marker for the pause.
+		tween.Paused = time()
+		-- Stop playback.
+		cancel(tween)
 	end,
 	Reset = function(tween)
 		-- Ensure no playback.
@@ -365,7 +380,8 @@ local tweenClass = table.freeze({__index = table.freeze({
 	end
 })})
 
-return function(instance, values, tweenInfo)
+-- Return tween creation function.
+return function(instance, values, customization)
 	-- Argument errors.
 	if typeof(instance) ~= "Instance" then error("No instance provided.") end
 	if type(values) ~= "table" or not next(values) then error("No values provided.") end
@@ -374,13 +390,13 @@ return function(instance, values, tweenInfo)
 	local updateFunctions = {}
 	local resetFunctions = {}
 	for name, value in values do
-		if type(name) ~= "string" then error("Received invalid value name of type "..typeof(name).." instead of string.") end
+		if type(name) ~= "string" then error("Received invalid value name of type '"..typeof(name).."' instead of string.") end
 		
 		if name:sub(1, 1) == "@" then
 			-- Attribute.
 			local attributeName = name:sub(2)
 			local original = instance:GetAttribute(attributeName)
-			if original == nil then error(attributeName.." is not a valid attribute of "..instance:GetFullName()..".") end
+			if original == nil then error("'"..attributeName.."' is not a valid attribute of '"..instance:GetFullName().."'.") end
 			
 			local dataType = normalDataTypes[typeof(value)]
 			if not dataType then error(typeof(value).." data type is not supported.") end
@@ -396,7 +412,7 @@ return function(instance, values, tweenInfo)
 			local dataType = advancedDataTypes[name]
 			if dataType then
 				-- Advanced type.
-				if not instance:IsA(dataType.Target) then error(instance:GetFullName().." doesn't have data type '"..name.."'.") end
+				if not instance:IsA(dataType.Target) then error("'"..instance:GetFullName().."'' doesn't have data type '"..name.."'.") end
 				
 				local original = dataType.Get(instance)
 				local set = dataType.Set
@@ -408,7 +424,7 @@ return function(instance, values, tweenInfo)
 				end)
 			else
 				-- Property.
-				if propertyExists(instance, name) ~= true then error("'"..name.."' is not a valid property of "..instance:GetFullName()..".") end
+				if propertyExists(instance, name) ~= true then error("'"..name.."' is not a valid property of '"..instance:GetFullName().."'.") end
 				dataType = normalDataTypes[typeof(value)]
 				if not dataType then error(typeof(value).." data type is not supported.") end
 				
@@ -424,8 +440,8 @@ return function(instance, values, tweenInfo)
 	end
 	
 	-- Handle tween info.
-	if type(tweenInfo) ~= "table" then
-		-- Build and return tween.
+	if type(customization) ~= "table" then
+		-- Create and return tween.
 		return setmetatable({
 			-- Signals.
 			Updated = signalPlus(),
@@ -441,23 +457,30 @@ return function(instance, values, tweenInfo)
 			UpdateFunctions = updateFunctions,
 			ResetFunctions = resetFunctions,
 			
-			-- Tween info. None provided, so use defaults.
+			-- Customization. None provided, so use defaults.
 			InverseTweenTime = defaultInverseTime,
 			GetValue = easingFunctions[defaultEasingStyle],
+			RepeatCount = 0,
+			UpdateEvent = defaultUpdateEvent,
 			
 			-- Playing tracker.
 			Playing = false
 		}, tweenClass)
 	else
-		-- Get tween info.
-		local tweenTime = tweenInfo.Time
-		local easingStyle = tweenInfo.EasingStyle
-		local delayTime = tweenInfo.DelayTime
-		local reverses = tweenInfo.Reverses
-		local repeatCount = tweenInfo.RepeatCount
-		local fps = tweenInfo.FPS
+		-- Get customization.
+		local tweenTime = customization.Time
 		
-		-- Verify tween info.
+		local easingStyle = customization.EasingStyle
+		
+		local delayTime = customization.DelayTime
+		local reverses = customization.Reverses
+		local repeatCount = customization.RepeatCount
+		
+		local fps = customization.FPS
+		
+		local updateEvent = customization.UpdateEvent
+		
+		-- Verify customization.
 		if type(tweenTime) ~= "number" then
 			tweenTime = defaultInverseTime
 		elseif tweenTime < 0.01 then
@@ -476,7 +499,7 @@ return function(instance, values, tweenInfo)
 			if easingStyle == "Linear" then
 				getValue = easing
 			else
-				getValue = easing[tweenInfo.EasingDirection]
+				getValue = easing[customization.EasingDirection]
 				if not getValue then
 					getValue = easing[defaultEasingDirection]
 				end
@@ -500,7 +523,13 @@ return function(instance, values, tweenInfo)
 			interval = 1/fps
 		end
 		
-		-- Build and return tween.
+		if updateEvents[updateEvent] then
+			updateEvent = RunService[updateEvent]
+		else
+			updateEvent = defaultUpdateEvent
+		end
+		
+		-- Create and return tween.
 		return setmetatable({
 			-- Signals.
 			Updated = signalPlus(),
@@ -516,13 +545,14 @@ return function(instance, values, tweenInfo)
 			UpdateFunctions = updateFunctions,
 			ResetFunctions = resetFunctions,
 			
-			-- Tween info.
+			-- Customization.
 			InverseTweenTime = tweenTime,
 			GetValue = getValue,
 			DelayTime = delayTime,
 			Reverses = reverses,
 			RepeatCount = repeatCount,
 			Interval = interval,
+			UpdateEvent = updateEvent,
 			
 			-- Playing tracker.
 			Playing = false
