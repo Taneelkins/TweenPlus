@@ -21,8 +21,10 @@ and many new and amazing features:
   - Sequences.
   - Ranges.
   - Strings.
+- Reset tween method.
 - Framerate limit control.
 - Additional tween signals.
+- Tick event customization.
 - Intuitive custom TweenInfo table.
 - Accurate color interpolation ([Oklab](https://observablehq.com/@aras-p/oklab-interpolation-test)).
 
