@@ -24,7 +24,7 @@ and many new and amazing features:
 - Reset tween method.
 - Framerate limit control.
 - Additional tween signals.
-- Tick event customization.
+- Update event customization.
 - Intuitive custom TweenInfo table.
 - Accurate color interpolation ([Oklab](https://observablehq.com/@aras-p/oklab-interpolation-test)).
 
