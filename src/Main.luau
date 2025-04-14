@@ -13,7 +13,7 @@
      ====           ======    ======      ========================   ====     ======        :::     
      ====            ====      ====       ========================   ====       ====                
 
-v1.1.0
+v1.2.0
 
 An open-source tweening module for Roblox, featuring advanced
 datatypes, accurate color interpolation and more customization.
@@ -54,13 +54,13 @@ SOFTWARE.
 
 local RunService = game:GetService("RunService")
 
+local SignalPlus = require(script.SignalPlus)
+
 local dataTypes = require(script.DataTypes)
 local normalDataTypes = dataTypes.Normal
 local advancedDataTypes = dataTypes.Advanced
 
 local easingFunctions = require(script.EasingFunctions)
-
-local signalPlus = require(script.SignalPlus)
 
 -- Defaults.
 local defaultInverseTime = 1 -- 1/time.
@@ -68,9 +68,11 @@ local defaultInverseTime = 1 -- 1/time.
 local defaultEasingStyle = "Linear"
 local defaultEasingDirection = "In"
 
-local defaultUpdateEvent = RunService.PostSimulation
+local defaultRepeatCount = 0
 
--- Types.
+local defaultUpdateEvent = "PostSimulation"
+
+-- External types.
 export type Tween = {
 	Start: typeof(
 		-- Starts or resumes playback of the tween.
@@ -129,60 +131,60 @@ type CreateTween = typeof(
 	function(instance: Instance, values: {[string]: any}, customization: Customization): Tween end
 )
 
--- List for validity checks.
+-- Internal types.
+type InternalTween = {
+	InverseTweenTime: number,
+	
+	GetValue: (alpha: number) -> number,
+	
+	RepeatCount: number,
+	Reverses: boolean,
+	DelayTime: number,
+	
+	Interval: number,
+	LastUpdate: number,
+	
+	UpdateEvent: "PostSimulation" | "PreSimulation" | "PreRender"
+}
+
+-- Lists for validity checks.
 local updateEvents = {
 	PostSimulation = true,
 	PreSimulation = true,
 	PreRender = true
 }
 
--- Module.
-local instanceTweens = {}
+-- Active tweens collections for each event.
+local activeTweens = {
+	PostSimulation = {},
+	PreSimulation = {},
+	PreRender = {}
+}
 
-local function propertyExists(instance, name)
-	local _, result = pcall(function()
-		local property = instance[name] -- If no property or instance is found, this will error.
-		if typeof(property) == "Instance" then return end -- Ensure it's a property, not a child.
-		return true
-	end)
-	return result
-end
-
-local function cancel(tween)
-	-- Set playing to false, stopping playback.
-	tween.Playing = false
-	
-	-- Tween removal.
-	local instance = tween.Instance
-	local tweens = instanceTweens[instance]
-	tweens[tween] = nil
-	if not next(tweens) then
-		instanceTweens[instance] = nil
-	end
-	
-	-- Fire stopped signal.
-	tween.Stopped:Fire()
-end
-
-local function play(tween, instance, tweens)
-	-- Gather information.
-	local updated = tween.Updated
-	
-	local updateFunctions = tween.UpdateFunctions
-	
-	local inverseTweenTime = tween.InverseTweenTime
-	local getValue = tween.GetValue
-	local repeatCount = tween.RepeatCount
-	local reverses = tween.Reverses
-	local delayTime = tween.DelayTime
-	local interval = tween.Interval
-	
-	local updateEvent = tween.UpdateEvent
-	
-	-- Play loop.
-	while true do
+-- Setup tween processing for all events.
+local function processTweens(tweens)
+	local currentTime = time()
+	for tween: InternalTween in tweens do
+		-- Account for pause when waiting.
+		if tween.Waited then
+			if currentTime - tween.Waited < tween.DelayTime then
+				continue
+			else
+				tween.Waited = nil
+				tween.StartTime = currentTime
+			end
+		end
+		
+		-- Ensure desired interval (specified in FPS).
+		if tween.Interval then
+			if currentTime - tween.LastUpdate < tween.Interval then
+				continue
+			end
+			tween.LastUpdate = currentTime
+		end
+		
 		-- Calculate raw alpha.
-		local alpha = (time() - tween.StartTime)*inverseTweenTime
+		local alpha = (currentTime - tween.StartTime)*tween.InverseTweenTime
 		
 		local phaseCompleted = alpha >= 1
 		
@@ -200,174 +202,125 @@ local function play(tween, instance, tweens)
 		end
 		
 		-- Get eased alpha and call value update functions.
-		local easedAlpha = getValue(alpha)
-		for _, update in updateFunctions do
+		local easedAlpha = tween.GetValue(alpha)
+		for _, update in tween.UpdateFunctions do
 			update(easedAlpha)
 		end
 		
 		-- Fire updated signal with raw alpha.
-		updated:Fire(alpha)
+		tween.Updated:Fire(alpha)
 		
 		-- Phase completion stuff.
 		if phaseCompleted then
 			if tween.Reverse then
-				if repeatCount == -1 or tween.Repetitions < repeatCount then
+				-- Already going in reverse. Means reversing is enabled, so no need to check for that.
+				if tween.RepeatCount == -1 or tween.Repetitions < tween.RepeatCount then
 					tween.Repetitions += 1
-					if delayTime then
-						tween.Waited = time()
-						task.wait(delayTime)
-						tween.Waited = nil
-						if not tween.Playing then return end
+					if tween.DelayTime then
+						tween.Waited = currentTime
 					end
+					tween.StartTime = currentTime
 					tween.Reverse = nil
-					tween.StartTime = time()
 				else
 					break
 				end
 			else
-				if reverses then
-					if delayTime then
-						tween.Waited = time()
-						task.wait(delayTime)
-						tween.Waited = nil
-						if not tween.Playing then return end
+				-- Not going in reverse.
+				if tween.Reverses then
+					-- Reversing enabled.
+					if tween.DelayTime then
+						tween.Waited = currentTime
 					end
 					tween.Reverse = true
-					tween.StartTime = time()
+					tween.StartTime = currentTime
 				else
-					if repeatCount == -1 or tween.Repetitions < repeatCount then
+					-- Reversing disabled.
+					if tween.RepeatCount == -1 or tween.Repetitions < tween.RepeatCount then
 						tween.Repetitions += 1
-						if delayTime then
-							tween.Waited = time()
-							task.wait(delayTime)
-							tween.Waited = nil
-							if not tween.Playing then return end
+						if tween.DelayTime then
+							tween.Waited = currentTime
 						end
-						tween.StartTime = time()
+						tween.StartTime = currentTime
 					else
 						break
 					end
 				end
 			end
 		end
-		
-		-- Yield.
-		if interval then -- If FPS inputted.
-			local intervalStart = time()
-			while true do
-				updateEvent:Wait()
-				if time() - intervalStart >= interval then break end
-			end
-		else
-			updateEvent:Wait()
-		end
-		
-		-- Ensure tween is still supposed to play.
-		if not tween.Playing then return end
 	end
-	
-	-- Tween removal.
-	tweens[tween] = nil
-	if not next(tweens) then
-		instanceTweens[instance] = nil
-	end
-	
-	-- Set playing boolean.
-	tween.Playing = false
-	
-	-- Fire completed signal.
-	tween.Completed:Fire()
+end
+for event, tweens in activeTweens do
+	RunService[event]:Connect(function()
+		processTweens(tweens)
+	end)
 end
 
+-- Tween class.
+local function stop(tween)
+	-- Verify playback.
+	if tween.Paused then return end
+	
+	-- Tween removal.
+	tween.Table[tween] = nil
+	-- Set time markers.
+	tween.Paused = time()
+	
+	-- Fire stopped signal.
+	tween.Stopped:Fire()
+end
 local tweenClass = table.freeze({__index = table.freeze({
 	Start = function(tween)
-		-- Gather information.
+		-- Verify playback.
+		if not tween.Paused then return end
+		
+		-- Handle any conflicts.
 		local instance = tween.Instance
 		local values = tween.Values
 		
-		local paused = tween.Paused
-		
-		-- Get instance's tweens.
-		local tweens = instanceTweens[instance]
-		
-		-- Handle instance tweens.
-		if tweens then
-			-- Handle any conflicts.
-			for otherTween, otherValues in tweens do
-				for value in otherValues do
-					if values[value] then
-						cancel(otherTween)
-						tweens[otherTween] = nil
-						break
+		for _, tweens in activeTweens do
+			for otherTween, otherInstance in tweens do
+				if otherInstance == instance then
+					for value in otherTween.Values do
+						if values[value] then
+							stop(otherTween)
+							tweens[otherTween] = nil
+							break
+						end
 					end
 				end
 			end
-			tweens[tween] = values
-		else
-			-- Initialize instance tweens storage.
-			tweens = {[tween] = values}
-			instanceTweens[instance] = tweens
 		end
 		
-		-- Initialization.
-		if paused then
-			-- Account for waiting.
-			local waited = tween.Waited
-			if waited then
-				task.wait(tween.DelayTime - paused + waited)
-				tween.Waited = nil
-			end
-			
-			-- Remove paused marker.
-			tween.Paused = nil
-			
-			-- Adjust start time.
-			tween.StartTime = tween.StartTime + time() - paused
-		else
-			-- Ensure no playback.
-			if tween.Playing then cancel(tween) end
-			
-			-- Delay.
-			if tween.DelayTime then
-				task.wait(tween.DelayTime)
-			end
-			
-			-- Initialize/reset tracking values.
-			tween.StartTime = time()
-			tween.Repetitions = 0
-			tween.Reverse = false
+		-- Set time markers.
+		local timeSince = time() - tween.Paused
+		tween.StartTime = tween.StartTime + timeSince
+		if tween.Waited then
+			tween.Waited = tween.Waited + timeSince
 		end
+		tween.Paused = nil
 		
-		-- Set playing boolean.
-		tween.Playing = true
+		-- Add tween.
+		tween.Table[tween] = instance
 		
 		-- Fire started signal.
 		tween.Started:Fire()
-		
-		-- Start tween playback.
-		coroutine.resume(coroutine.create(play), tween, instance, tweens)
 	end,
-	Stop = function(tween)
-		-- Verify playback.
-		if not tween.Playing then return end
-		
-		-- Save the current time as a marker for the pause.
-		tween.Paused = time()
-		-- Stop playback.
-		cancel(tween)
-	end,
+	
+	Stop = stop,
+	
 	Reset = function(tween)
 		-- Ensure no playback.
-		if tween.Playing then cancel(tween) end
+		stop(tween)
 		
 		-- Call all value reset functions.
 		for _, reset in tween.ResetFunctions do
 			reset()
 		end
 	end,
+	
 	Destroy = function(tween)
 		-- Ensure no playback.
-		if tween.Playing then cancel(tween) end
+		stop(tween)
 		
 		-- Destroy signals.
 		tween.Updated:Destroy()
@@ -380,26 +333,35 @@ local tweenClass = table.freeze({__index = table.freeze({
 	end
 })})
 
--- Return tween creation function.
+-- Tween creation function.
+local function propertyExists(instance, name)
+	local _, result = pcall(function()
+		local property = instance[name] -- If no property or instance is found, this will error.
+		if typeof(property) == "Instance" then return end -- Ensure it's a property, not a child.
+		return true
+	end)
+	return result
+end
+
 return function(instance, values, customization)
 	-- Argument errors.
-	if typeof(instance) ~= "Instance" then error("No instance provided.") end
-	if type(values) ~= "table" or not next(values) then error("No values provided.") end
+	if typeof(instance) ~= "Instance" then error("No instance provided.", 2) end
+	if type(values) ~= "table" or not next(values) then error("No values provided.", 2) end
 	
 	-- Handle values.
 	local updateFunctions = {}
 	local resetFunctions = {}
 	for name, value in values do
-		if type(name) ~= "string" then error("Received invalid value name of type '"..typeof(name).."' instead of string.") end
+		if type(name) ~= "string" then error("Invalid value name of type '"..typeof(name).."' instead of string.", 2) end
 		
 		if name:sub(1, 1) == "@" then
 			-- Attribute.
 			local attributeName = name:sub(2)
 			local original = instance:GetAttribute(attributeName)
-			if original == nil then error("'"..attributeName.."' is not a valid attribute of '"..instance:GetFullName().."'.") end
+			if original == nil then error("'"..attributeName.."' is not a valid attribute of '"..instance:GetFullName().."'.", 2) end
 			
 			local dataType = normalDataTypes[typeof(value)]
-			if not dataType then error(typeof(value).." data type is not supported.") end
+			if not dataType then error("'"..typeof(value).."'' data type is not supported.", 2) end
 			
 			table.insert(updateFunctions, function(lerp)
 				instance:SetAttribute(attributeName, dataType(original, value, lerp))
@@ -412,7 +374,7 @@ return function(instance, values, customization)
 			local dataType = advancedDataTypes[name]
 			if dataType then
 				-- Advanced type.
-				if not instance:IsA(dataType.Target) then error("'"..instance:GetFullName().."'' doesn't have data type '"..name.."'.") end
+				if not instance:IsA(dataType.Target) then error("'"..instance:GetFullName().."'' doesn't have data type '"..name.."'.", 2) end
 				
 				local original = dataType.Get(instance)
 				local set = dataType.Set
@@ -424,9 +386,9 @@ return function(instance, values, customization)
 				end)
 			else
 				-- Property.
-				if propertyExists(instance, name) ~= true then error("'"..name.."' is not a valid property of '"..instance:GetFullName().."'.") end
+				if propertyExists(instance, name) ~= true then error("'"..name.."' is not a valid property of '"..instance:GetFullName().."'.", 2) end
 				dataType = normalDataTypes[typeof(value)]
-				if not dataType then error(typeof(value).." data type is not supported.") end
+				if not dataType then error("'"..typeof(value).."' data type is not supported.", 2) end
 				
 				local original = instance[name]
 				table.insert(updateFunctions, function(lerp)
@@ -439,15 +401,17 @@ return function(instance, values, customization)
 		end
 	end
 	
-	-- Handle tween info.
+	-- Handle customization.
+	--local currentTime = time()
+	
 	if type(customization) ~= "table" then
 		-- Create and return tween.
 		return setmetatable({
 			-- Signals.
-			Updated = signalPlus(),
-			Started = signalPlus(),
-			Stopped = signalPlus(),
-			Completed = signalPlus(),
+			Updated = SignalPlus(),
+			Started = SignalPlus(),
+			Stopped = SignalPlus(),
+			Completed = SignalPlus(),
 			
 			-- Main arguments.
 			Instance = instance,
@@ -460,11 +424,16 @@ return function(instance, values, customization)
 			-- Customization. None provided, so use defaults.
 			InverseTweenTime = defaultInverseTime,
 			GetValue = easingFunctions[defaultEasingStyle],
-			RepeatCount = 0,
-			UpdateEvent = defaultUpdateEvent,
+			RepeatCount = defaultRepeatCount,
+			Table = activeTweens[defaultUpdateEvent],
 			
-			-- Playing tracker.
-			Playing = false
+			-- Time markers
+			StartTime = 0,
+			Paused = 0,
+			
+			-- Trackers.
+			Repetitions = 0,
+			Reverse = false
 		}, tweenClass)
 	else
 		-- Get customization.
@@ -513,7 +482,7 @@ return function(instance, values, customization)
 			reverses = nil
 		end
 		if type(repeatCount) ~= "number" then
-			repeatCount = 0
+			repeatCount = defaultRepeatCount
 		elseif repeatCount < 0 then
 			repeatCount = -1
 		end
@@ -523,19 +492,17 @@ return function(instance, values, customization)
 			interval = 1/fps
 		end
 		
-		if updateEvents[updateEvent] then
-			updateEvent = RunService[updateEvent]
-		else
+		if not updateEvents[updateEvent] then
 			updateEvent = defaultUpdateEvent
 		end
 		
 		-- Create and return tween.
 		return setmetatable({
 			-- Signals.
-			Updated = signalPlus(),
-			Started = signalPlus(),
-			Stopped = signalPlus(),
-			Completed = signalPlus(),
+			Updated = SignalPlus(),
+			Started = SignalPlus(),
+			Stopped = SignalPlus(),
+			Completed = SignalPlus(),
 			
 			-- Main arguments.
 			Instance = instance,
@@ -552,10 +519,15 @@ return function(instance, values, customization)
 			Reverses = reverses,
 			RepeatCount = repeatCount,
 			Interval = interval,
-			UpdateEvent = updateEvent,
+			LastUpdate = if interval then -math.huge else nil,
+			Table = activeTweens[updateEvent],
 			
-			-- Playing tracker.
-			Playing = false
+			-- Time markers.
+			StartTime = 0,
+			Paused = 0,
+			
+			-- Trackers.
+			Repetitions = 0,
 		}, tweenClass)
 	end
 end :: CreateTween
