@@ -29,18 +29,16 @@ local function outQuad(alpha)
 	return alpha*(2 - alpha)
 end
 local function inOutQuad(alpha)
-	if alpha < 0.5 then
-		return 0.5*(alpha*2)^2
-	else
-		return 1 - 0.5*((1 - alpha)*2)^2
-	end
+	return if alpha < 0.5 then
+		0.5*(alpha*2)^2
+		else
+		1 - 0.5*((1 - alpha)*2)^2
 end
 local function outInQuad(alpha)
-	if alpha < 0.5 then
-		return 0.5*(alpha*2)*(2 - alpha*2)
-	else
-		return 0.5*((2*alpha - 1)^2) + 0.5
-	end
+	return if alpha < 0.5 then
+		0.5*(alpha*2)*(2 - alpha*2)
+		else
+		0.5*((2*alpha - 1)^2) + 0.5
 end
 
 -- Cubic easing.
@@ -52,18 +50,16 @@ local function outCubic(alpha)
 end
 local function inOutCubic(alpha)
 	alpha *= 2
-	if alpha < 1 then
-		return 0.5*alpha^3
-	else
-		return 0.5*((alpha - 2)^3 + 2)
-	end
+	return if alpha < 1 then
+		0.5*alpha^3
+		else
+		0.5*((alpha - 2)^3 + 2)
 end
 local function outInCubic(alpha)
-	if alpha < 0.5 then
-		return 0.5*((2*alpha - 1)^3 + 1)
-	else
-		return 0.5*(2*alpha - 1)^3 + 0.5
-	end
+	return if alpha < 0.5 then
+		0.5*((2*alpha - 1)^3 + 1)
+		else
+		0.5*(2*alpha - 1)^3 + 0.5
 end
 
 -- Quart easing.
@@ -75,18 +71,16 @@ local function outQuart(alpha)
 end
 local function inOutQuart(alpha)
 	alpha *= 2
-	if alpha < 1 then
-		return 0.5*alpha^4
-	else
-		return -0.5*((alpha - 2)^4 - 2)
-	end
+	return if alpha < 1 then
+		0.5*alpha^4
+		else
+		-0.5*((alpha - 2)^4 - 2)
 end
 local function outInQuart(alpha)
-	if alpha < 0.5 then
-		return 0.5*(1 - (alpha*2 - 1)^4)
-	else
-		return 0.5*((2*alpha - 1)^4) + 0.5
-	end
+	return if alpha < 0.5 then
+		0.5*(1 - (alpha*2 - 1)^4)
+		else
+		0.5*((2*alpha - 1)^4) + 0.5
 end
 
 -- Quint easing.
@@ -98,18 +92,16 @@ local function outQuint(alpha)
 end
 local function inOutQuint(alpha)
 	alpha *= 2
-	if alpha < 1 then
-		return 0.5*alpha^5
-	else
-		return 0.5*((alpha - 2)^5 + 2)
-	end
+	return if alpha < 1 then
+		0.5*alpha^5
+		else
+		0.5*((alpha - 2)^5 + 2)
 end
 local function outInQuint(alpha)
-	if alpha < 0.5 then
-		return 0.5*((2*alpha - 1)^5 + 1)
-	else
-		return 0.5*(2*alpha - 1)^5 + 0.5
-	end
+	return if alpha < 0.5 then
+		0.5*((2*alpha - 1)^5 + 1)
+		else
+		0.5*(2*alpha - 1)^5 + 0.5
 end
 
 -- Sine easing.
@@ -123,11 +115,10 @@ local function inOutSine(alpha)
 	return 0.5*(1 - math.cos(math.pi*alpha))
 end
 local function outInSine(alpha)
-	if alpha < 0.5 then
-		return 0.5*math.sin(alpha*math.pi)
-	else
-		return 0.5*(1 - math.cos((2*alpha - 1)*math.pi*0.5)) + 0.5
-	end
+	return if alpha < 0.5 then
+		0.5*math.sin(alpha*math.pi)
+		else
+		0.5*(1 - math.cos((2*alpha - 1)*math.pi*0.5)) + 0.5
 end
 
 -- Exponential easing.
@@ -140,18 +131,16 @@ end
 local function inOutExponential(alpha)
 	if alpha == 0 then return 0 end
 	if alpha == 1 then return 1 end
-	if alpha < 0.5 then
-		return 0.5*2^(10*(2*alpha - 1)) - 5e-4
-	else
-		return 0.5*1.0005*(2 - 2^(-10*(2*alpha - 1)))
-	end
+	return if alpha < 0.5 then
+		0.5*2^(10*(2*alpha - 1)) - 5e-4
+		else
+		0.5*1.0005*(2 - 2^(-10*(2*alpha - 1)))
 end
 local function outInExponential(alpha)
-	if alpha < 0.5 then
-		return 0.5*outExponential(alpha*2)
-	else
-		return 0.5*(inExponential(2*alpha - 1) + 1)
-	end
+	return if alpha < 0.5 then
+		0.5*outExponential(alpha*2)
+		else
+		0.5*(inExponential(2*alpha - 1) + 1)
 end
 
 -- Circular easing.
@@ -163,18 +152,16 @@ local function outCircular(alpha)
 end
 local function inOutCircular(alpha)
 	alpha *= 2
-	if alpha < 1 then
-		return 0.5*(1 - math.sqrt(1 - alpha^2))
-	else
-		return 0.5*(math.sqrt(1 - (alpha - 2)^2) + 1)
-	end
+	return if alpha < 1 then
+		0.5*(1 - math.sqrt(1 - alpha^2))
+		else
+		0.5*(math.sqrt(1 - (alpha - 2)^2) + 1)
 end
 local function outInCircular(alpha)
-	if alpha < 0.5 then
-		return 0.5*outCircular(alpha*2)
-	else
-		return 0.5*(inCircular(2*alpha - 1) + 1)
-	end
+	return if alpha < 0.5 then
+		0.5*outCircular(alpha*2)
+		else
+		0.5*(inCircular(2*alpha - 1) + 1)
 end
 
 -- Elastic easing.
@@ -194,18 +181,16 @@ local function inOutElastic(alpha)
 	if alpha == 1 then return 1 end
 	alpha *= 2
 	local t = alpha - 1
-	if alpha < 1 then
-		return -0.5*elasticInOutA*2^(10*t)*math.sin((t - elasticInOutS)*(2*math.pi/elasticInOutP))
-	else
-		return 0.5*elasticInOutA*2^(-10*t)*math.sin((t - elasticInOutS)*(2*math.pi/elasticInOutP)) + 1
-	end
+	return if alpha < 1 then
+		-0.5*elasticInOutA*2^(10*t)*math.sin((t - elasticInOutS)*(2*math.pi/elasticInOutP))
+		else
+		0.5*elasticInOutA*2^(-10*t)*math.sin((t - elasticInOutS)*(2*math.pi/elasticInOutP)) + 1
 end
 local function outInElastic(alpha)
-	if alpha < 0.5 then
-		return 0.5*outElastic(alpha*2)
-	else
-		return 0.5*(inElastic(2*alpha - 1) + 1)
-	end
+	return if alpha < 0.5 then
+		0.5*outElastic(alpha*2)
+		else
+		0.5*(inElastic(2*alpha - 1) + 1)
 end
 
 -- Back easing.
@@ -226,41 +211,37 @@ local function inOutBack(alpha)
 	end
 end
 local function outInBack(alpha)
-	if alpha < 0.5 then
-		return 0.5*outBack(alpha*2)
-	else
-		return 0.5*(inBack(2*alpha - 1) + 1)
-	end
+	return if alpha < 0.5 then
+		0.5*outBack(alpha*2)
+		else
+		0.5*(inBack(2*alpha - 1) + 1)
 end
 
 -- Bounce easing.
 local function outBounce(alpha)
-	if alpha < 1/2.75 then
-		return 7.5625*alpha^2
-	elseif alpha < 2/2.75 then
-		return 7.5625*(alpha - 1.5/2.75)^2 + 0.75
-	elseif alpha < 2.5/2.75 then
-		return 7.5625*(alpha - 2.25/2.75)^2 + 0.9375
-	else
-		return 7.5625*(alpha - 2.625/2.75)^2 + 0.984375
-	end
+	return if alpha < 1/2.75 then
+		7.5625*alpha^2
+		elseif alpha < 2/2.75 then
+		7.5625*(alpha - 1.5/2.75)^2 + 0.75
+		elseif alpha < 2.5/2.75 then
+		7.5625*(alpha - 2.25/2.75)^2 + 0.9375
+		else
+		7.5625*(alpha - 2.625/2.75)^2 + 0.984375
 end
 local function inBounce(alpha)
 	return 1 - outBounce(1 - alpha)
 end
 local function inOutBounce(alpha)
-	if alpha < 0.5 then
-		return 0.5*inBounce(2*alpha)
-	else
-		return 0.5*outBounce(2*alpha - 1) + 0.5
-	end
+	return if alpha < 0.5 then
+		0.5*inBounce(2*alpha)
+		else
+		0.5*outBounce(2*alpha - 1) + 0.5
 end
 local function outInBounce(alpha)
-	if alpha < 0.5 then
-		return 0.5*outBounce(2*alpha)
-	else
-		return 0.5*inBounce(2*alpha - 1) + 0.5
-	end
+	return if alpha < 0.5 then
+		0.5*outBounce(2*alpha)
+		else
+		0.5*inBounce(2*alpha - 1) + 0.5
 end
 
 -- Map and return easing functions.
