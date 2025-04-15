@@ -13,7 +13,7 @@
      ====           ======    ======      ========================   ====     ======        :::     
      ====            ====      ====       ========================   ====       ====                
 
-v1.2.0
+v1.3.0
 
 An open-source tweening module for Roblox, featuring advanced
 datatypes, accurate color interpolation and more customization.
@@ -144,18 +144,16 @@ type InternalTween = {
 	Interval: number,
 	LastUpdate: number,
 	
-	UpdateEvent: "PostSimulation" | "PreSimulation" | "PreRender"
+	UpdateEvent: "PostSimulation" | "PreSimulation" | "PreRender",
+	
+	Updated: signalPlus.Signal<number>,
+	Started: signalPlus.Signal,
+	Stopped: signalPlus.Signal,
+	Completed: signalPlus.Signal
 }
 
--- Lists for validity checks.
+-- Update events each with a tweens collection.
 local updateEvents = {
-	PostSimulation = true,
-	PreSimulation = true,
-	PreRender = true
-}
-
--- Active tweens collections for each event.
-local activeTweens = {
 	PostSimulation = {},
 	PreSimulation = {},
 	PreRender = {}
@@ -163,16 +161,17 @@ local activeTweens = {
 
 -- Setup tween processing for all events.
 local function processTweens(tweens)
+	if not next(tweens) then return end
+	
 	local currentTime = time()
 	for tween: InternalTween in tweens do
 		-- Account for pause when waiting.
 		if tween.Waited then
 			if currentTime - tween.Waited < tween.DelayTime then
 				continue
-			else
-				tween.Waited = nil
-				tween.StartTime = currentTime
 			end
+			tween.Waited = nil
+			tween.StartTime = currentTime
 		end
 		
 		-- Ensure desired interval (specified in FPS).
@@ -249,7 +248,7 @@ local function processTweens(tweens)
 		end
 	end
 end
-for event, tweens in activeTweens do
+for event, tweens in updateEvents do
 	RunService[event]:Connect(function()
 		processTweens(tweens)
 	end)
@@ -269,7 +268,7 @@ local function stop(tween)
 	tween.Stopped:Fire()
 end
 local tweenClass = table.freeze({__index = table.freeze({
-	Start = function(tween)
+	Start = function(tween: InternalTween)
 		-- Verify playback.
 		if not tween.Paused then return end
 		
@@ -277,7 +276,7 @@ local tweenClass = table.freeze({__index = table.freeze({
 		local instance = tween.Instance
 		local values = tween.Values
 		
-		for _, tweens in activeTweens do
+		for _, tweens in updateEvents do
 			for otherTween, otherInstance in tweens do
 				if otherInstance == instance then
 					for value in otherTween.Values do
@@ -293,9 +292,9 @@ local tweenClass = table.freeze({__index = table.freeze({
 		
 		-- Set time markers.
 		local timeSince = time() - tween.Paused
-		tween.StartTime = tween.StartTime + timeSince
+		tween.StartTime += timeSince
 		if tween.Waited then
-			tween.Waited = tween.Waited + timeSince
+			tween.Waited += timeSince
 		end
 		tween.Paused = nil
 		
@@ -308,7 +307,7 @@ local tweenClass = table.freeze({__index = table.freeze({
 	
 	Stop = stop,
 	
-	Reset = function(tween)
+	Reset = function(tween: InternalTween)
 		-- Ensure no playback.
 		stop(tween)
 		
@@ -318,9 +317,10 @@ local tweenClass = table.freeze({__index = table.freeze({
 		end
 	end,
 	
-	Destroy = function(tween)
+	Destroy = function(tween: InternalTween)
 		-- Ensure no playback.
-		stop(tween)
+		tween.Table[tween] = nil
+		tween.Stopped:Fire()
 		
 		-- Destroy signals.
 		tween.Updated:Destroy()
@@ -402,11 +402,9 @@ return function(instance, values, customization)
 	end
 	
 	-- Handle customization.
-	--local currentTime = time()
-	
 	if type(customization) ~= "table" then
-		-- Create and return tween.
-		return setmetatable({
+		-- Create tween.
+		local tween: InternalTween = setmetatable({
 			-- Signals.
 			Updated = SignalPlus(),
 			Started = SignalPlus(),
@@ -425,7 +423,7 @@ return function(instance, values, customization)
 			InverseTweenTime = defaultInverseTime,
 			GetValue = easingFunctions[defaultEasingStyle],
 			RepeatCount = defaultRepeatCount,
-			Table = activeTweens[defaultUpdateEvent],
+			Table = updateEvents[defaultUpdateEvent],
 			
 			-- Time markers
 			StartTime = 0,
@@ -435,6 +433,14 @@ return function(instance, values, customization)
 			Repetitions = 0,
 			Reverse = false
 		}, tweenClass)
+		
+		-- Handle instance destroy.
+		instance.Destroying:Connect(function()
+			tween:Destroy()
+		end)
+		
+		-- Return tween.
+		return tween
 	else
 		-- Get customization.
 		local tweenTime = customization.Time
@@ -496,8 +502,8 @@ return function(instance, values, customization)
 			updateEvent = defaultUpdateEvent
 		end
 		
-		-- Create and return tween.
-		return setmetatable({
+		-- Create tween.
+		local tween: InternalTween = setmetatable({
 			-- Signals.
 			Updated = SignalPlus(),
 			Started = SignalPlus(),
@@ -520,7 +526,7 @@ return function(instance, values, customization)
 			RepeatCount = repeatCount,
 			Interval = interval,
 			LastUpdate = if interval then -math.huge else nil,
-			Table = activeTweens[updateEvent],
+			Table = updateEvents[updateEvent],
 			
 			-- Time markers.
 			StartTime = 0,
@@ -529,5 +535,13 @@ return function(instance, values, customization)
 			-- Trackers.
 			Repetitions = 0,
 		}, tweenClass)
+		
+		-- Handle instance destroy.
+		instance.Destroying:Connect(function()
+			tween:Destroy()
+		end)
+		
+		-- Return tween.
+		return tween
 	end
 end :: CreateTween
