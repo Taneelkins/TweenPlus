@@ -13,7 +13,7 @@
      ====           ======    ======      ========================   ====     ======        :::     
      ====            ====      ====       ========================   ====       ====                
 
-v1.3.0
+v1.3.1
 
 An open-source tweening module for Roblox, featuring advanced
 datatypes, accurate color interpolation and more customization.
@@ -22,14 +22,14 @@ datatypes, accurate color interpolation and more customization.
 GitHub:
 https://github.com/AlexanderLindholt/TweenPlus
 
-Devforum:
+DevForum:
 https://devforum.roblox.com/t/3599638
 
 
 --------------------------------------------------------------------------------
 MIT License
 
-Copyright (c) 2025 Alexander Lindholt
+Copyright (c) 2025 AlexanderLindholt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -159,6 +159,20 @@ local updateEvents = {
 	PreRender = {}
 }
 
+-- Tween stop function.
+local function stop(tween)
+	-- Verify playback.
+	if tween.Paused then return end
+	
+	-- Tween removal.
+	tween.Table[tween] = nil
+	-- Set time markers.
+	tween.Paused = time()
+	
+	-- Fire stopped signal.
+	tween.Stopped:Fire()
+end
+
 -- Setup tween processing for all events.
 local function processTweens(tweens)
 	if not next(tweens) then return end
@@ -221,7 +235,7 @@ local function processTweens(tweens)
 					tween.StartTime = currentTime
 					tween.Reverse = nil
 				else
-					break
+					stop(tween)
 				end
 			else
 				-- Not going in reverse.
@@ -241,7 +255,7 @@ local function processTweens(tweens)
 						end
 						tween.StartTime = currentTime
 					else
-						break
+						stop(tween)
 					end
 				end
 			end
@@ -255,18 +269,6 @@ for event, tweens in updateEvents do
 end
 
 -- Tween class.
-local function stop(tween)
-	-- Verify playback.
-	if tween.Paused then return end
-	
-	-- Tween removal.
-	tween.Table[tween] = nil
-	-- Set time markers.
-	tween.Paused = time()
-	
-	-- Fire stopped signal.
-	tween.Stopped:Fire()
-end
 local tweenClass = table.freeze({__index = table.freeze({
 	Start = function(tween: InternalTween)
 		-- Verify playback.
