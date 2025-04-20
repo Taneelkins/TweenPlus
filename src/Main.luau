@@ -13,7 +13,7 @@
      ====           ======    ======      ========================   ====     ======        :::     
      ====            ====      ====       ========================   ====       ====                
 
-v1.3.1
+v1.3.2
 
 An open-source tweening module for Roblox, featuring advanced
 datatypes, accurate color interpolation and more customization.
@@ -92,13 +92,13 @@ export type Tween = {
 		function(tween: Tween) end
 	),
 	
-	Updated: signalPlus.Signal<number>,
-	Started: signalPlus.Signal,
-	Stopped: signalPlus.Signal,
-	Completed: signalPlus.Signal
+	Updated: SignalPlus.Signal<number>,
+	Started: SignalPlus.Signal,
+	Stopped: SignalPlus.Signal,
+	Completed: SignalPlus.Signal
 }
 export type Customization = {
-	Time: number,
+	Time: number?,
 	
 	EasingStyle:
 		"Linear" |
@@ -111,20 +111,20 @@ export type Customization = {
 		"Circular" |
 		"Elastic" |
 		"Back" |
-		"Bounce",
+		"Bounce"?,
 	EasingDirection:
 		"In" |
 		"Out" |
 		"InOut" |
-		"OutIn",
+		"OutIn"?,
 	
-	RepeatCount: number,
-	Reverses: boolean,
-	DelayTime: number,
+	RepeatCount: number?,
+	Reverses: boolean?,
+	DelayTime: number?,
 	
-	FPS: number,
+	FPS: number?,
 	
-	UpdateEvent: "PostSimulation" | "PreSimulation" | "PreRender"
+	UpdateEvent: "PostSimulation" | "PreSimulation" | "PreRender"?
 }
 type CreateTween = typeof(
 	-- Creates a new tween.
@@ -146,10 +146,10 @@ type InternalTween = {
 	
 	UpdateEvent: "PostSimulation" | "PreSimulation" | "PreRender",
 	
-	Updated: signalPlus.Signal<number>,
-	Started: signalPlus.Signal,
-	Stopped: signalPlus.Signal,
-	Completed: signalPlus.Signal
+	Updated: SignalPlus.Signal<number>,
+	Started: SignalPlus.Signal,
+	Stopped: SignalPlus.Signal,
+	Completed: SignalPlus.Signal
 }
 
 -- Update events each with a tweens collection.
@@ -236,6 +236,7 @@ local function processTweens(tweens)
 					tween.Reverse = nil
 				else
 					stop(tween)
+					tween.Completed:Fire()
 				end
 			else
 				-- Not going in reverse.
@@ -256,6 +257,7 @@ local function processTweens(tweens)
 						tween.StartTime = currentTime
 					else
 						stop(tween)
+						tween.Completed:Fire()
 					end
 				end
 			end
