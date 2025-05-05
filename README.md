@@ -40,4 +40,8 @@ and an additional `OutIn` easing direction for all styles.
 ​<br>
 <br>
 
+
+## Check out the [guides and documentation](https://alexanderlindholt.gitbook.io/textplus) to learn all about it!
+<br>
+
 # Showcases, tutorials and more at the DevForum post!
