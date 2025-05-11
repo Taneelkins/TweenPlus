@@ -2,7 +2,7 @@
 
 <img src="./Logo.png"></img>
 
-An open-source tweening module for Roblox, featuring advanced<br>
+An open-source tweening library for Roblox, featuring advanced<br>
 datatypes, accurate color interpolation and more customization.
 
 [<img src="https://raw.githubusercontent.com/AlexanderLindholt/LinkButtons/refs/heads/main/Static/Module.png"></img>](https://create.roblox.com/store/asset/100081703118723) ​ [<img src="https://raw.githubusercontent.com/AlexanderLindholt/LinkButtons/refs/heads/main/Static/Devforum.png"></img>](https://devforum.roblox.com/t/3599638)
@@ -33,10 +33,10 @@ and an additional `OutIn` easing direction for all styles.
 <br>
 <br>
 
-# ⚡ Efficient, robust, intuitive.
-- Blazingly fast speeds.
-- Clear error feedback.
-- Typing & documentation.
+# ⚡ Fast, stable, intuitive.
+- Blazingly fast, lag-free performance.
+- Catches errors with clear feedback.
+- Proper typing and documentation.
 ​<br>
 <br>
 
