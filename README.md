@@ -12,24 +12,24 @@ datatypes, accurate color interpolation and more customization.
 <br>
 
 # 🌟 More capabilities!
+Experience animation in Roblox like it should've been.<br>
+<br>
+
 With all the features of TweenService,<br>
 and many new and amazing features:
+- Advanced networking for efficient server tweening.
 - [Attributes](https://create.roblox.com/docs/scripting/attributes) support.
-- Advanced properties:
-  - `Pivot`.
-  - `Scale`.
+- Support for advanced data types:
   - Sequences.
   - Ranges.
   - Strings.
-- Reset tween method.
+- Support for hidden properties:
+  - Pivot.
+  - Scale.
 - Framerate limit control.
-- Additional tween signals.
 - Update event customization.
-- Intuitive custom TweenInfo table.
 - Accurate color interpolation ([Oklab](https://observablehq.com/@aras-p/oklab-interpolation-test)).
-
-With all [easing styles](https://create.roblox.com/docs/reference/engine/enums/EasingStyle) that TweenService provides,<br>
-and an additional `OutIn` easing direction for all styles.
+- ***And much more!***
 <br>
 <br>
 
@@ -41,5 +41,5 @@ and an additional `OutIn` easing direction for all styles.
 <br>
 
 
-## Check out the [guides and documentation](https://alexanderlindholt.gitbook.io/textplus) to learn all about it!
+## Check out the [guides and documentation](https://alexanderlindholt.gitbook.io/tweenplus) to learn all about it!
 <br>

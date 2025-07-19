@@ -123,16 +123,22 @@ end
 
 -- Exponential easing.
 local function inExponential(alpha)
-	return if alpha == 0 then 0 else 2^(10*(alpha - 1)) - 1e-3
+	return if alpha == 0 then
+		0
+		else
+		2^(10*(alpha - 1)) - 1e-3
 end
 local function outExponential(alpha)
-	return if alpha == 1 then 1 else 1.001*(1 - 2^(-10*alpha))
+	return if alpha == 1 then
+		1
+		else
+		1.001*(1 - 2^(-10*alpha))
 end
 local function inOutExponential(alpha)
 	if alpha == 0 then return 0 end
 	if alpha == 1 then return 1 end
 	return if alpha < 0.5 then
-		0.5*2^(10*(2*alpha - 1)) - 5e-4
+		0.5*2^(10*(2*alpha - 1)) - 0.0005
 		else
 		0.5*1.0005*(2 - 2^(-10*(2*alpha - 1)))
 end
