@@ -1,13 +1,13 @@
 # Attributes
 
-If you aren't already familiar with attributes, please check out [Roblox's explanation](https://create.roblox.com/docs/scripting/attributes).
+_If you aren't already familiar with attributes, please check out_ [_Roblox's explanation_](https://create.roblox.com/docs/scripting/attributes)_._
 
 
 
 Starting a value name off with `@` will let Tween+ know that it's an attribute.\
 Other than that they work the same as usual properties.
 
-Example:
+Example usage of attributes:
 
 ```lua
 local tween = TweenPlus(

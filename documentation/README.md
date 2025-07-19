@@ -5,27 +5,24 @@ coverY: 0
 
 # Welcome
 
-Experience animation in Roblox like it should've been.
+Experience tweening in Roblox like it should've been.
 
 With all the features of TweenService,\
 and many new and amazing features:
 
+* Advanced networking for efficient server tweening.
 * [Attributes](https://create.roblox.com/docs/scripting/attributes) support.
-* Support for advanced values:
-  * `Pivot`.
-  * `Scale`.
+* Support for advanced data types:
   * Sequences.
   * Ranges.
   * Strings.
-* Reset tween method.
+* Support for hidden properties:
+  * Pivot.
+  * Scale.
 * Framerate limit control.
-* Additional tween signals.
 * Update event customization.
-* Intuitive custom TweenInfo table.
 * Accurate color interpolation ([Oklab](https://observablehq.com/@aras-p/oklab-interpolation-test)).
-
-With all [easing styles](https://create.roblox.com/docs/reference/engine/enums/EasingStyle) that TweenService provides,\
-and an additional `OutIn` easing direction for all styles.
+* _**And much more!**_
 
 
 

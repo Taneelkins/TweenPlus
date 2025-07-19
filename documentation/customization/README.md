@@ -10,7 +10,7 @@ You don’t have to provide all, or even any, because they all have defaults.
 You use it like this:
 
 ```lua
-local tween = TweenPlus(
+TweenPlus(
 	workspace.Part,
 	{
 		Position = Vector3.new(0, 10, 0),
@@ -23,7 +23,3 @@ local tween = TweenPlus(
 	}
 )
 ```
-
-{% content-ref url="customization-options.md" %}
-[customization-options.md](customization-options.md)
-{% endcontent-ref %}

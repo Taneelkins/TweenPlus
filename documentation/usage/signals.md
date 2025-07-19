@@ -1,6 +1,6 @@
 # Signals
 
-After creating a new tween, you can listen to the following signals:
+After creating a new tween, you can listen to the following [signals](https://alexanderlindholt.gitbook.io/signalplus/api-reference):
 
 * [**Updated**](#user-content-fn-1)[^1]
 * [**Started**](#user-content-fn-2)[^2]
