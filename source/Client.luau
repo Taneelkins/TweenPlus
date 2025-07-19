@@ -296,6 +296,7 @@ if packets then
 		local updateFunctions, resetFunctions = getUpdateFunctions(apiMap, instance, values)
 		
 		-- Create tween.
+		local easingStyle = customization[2]
 		local tween = {
 			-- Main arguments.
 			Instance = instance,
@@ -307,7 +308,7 @@ if packets then
 			
 			-- Customization.
 			InverseTweenTime = customization[1],
-			Ease = easingFunctions[customization[2]][customization[3]],
+			Ease = if easingStyle == "Linear" then easingFunctions.Linear else easingFunctions[easingStyle][customization[3]],
 			DelayTime = customization[4],
 			Reverses = customization[5],
 			RepeatCount = customization[6],
