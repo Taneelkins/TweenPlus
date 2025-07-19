@@ -5,3 +5,7 @@ The server and client tween APIs are identical, allowing you to reuse the same c
 {% hint style="warning" %}
 There's a limit of 256 total server tweens at once due to network optimizations.
 {% endhint %}
+
+{% hint style="warning" %}
+Make sure to require Tween+ on the client.
+{% endhint %}
