@@ -203,13 +203,6 @@ RunService.PostSimulation:Connect(function()
 		
 		if tween.Reverse then
 			alpha = 1 - alpha
-			if alpha < 0 then
-				alpha = 0
-			end
-		else
-			if alpha > 1 then
-				alpha = 1
-			end
 		end
 		
 		-- Save alpha.
