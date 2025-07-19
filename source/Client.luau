@@ -174,19 +174,9 @@ for event, tweens in updates do
 			local easedAlpha = nil
 			if tween.Reverse then
 				alpha = 1 - alpha
-				if alpha < 0 then
-					alpha = 0
-					easedAlpha = 0
-				else
-					easedAlpha = tween.Ease(alpha)
-				end
+				easedAlpha = tween.Ease(alpha)
 			else
-				if alpha > 1 then
-					alpha = 1
-					easedAlpha = 1
-				else
-					easedAlpha = tween.Ease(alpha)
-				end
+				easedAlpha = tween.Ease(alpha)
 			end
 			
 			-- Get eased alpha and call value update functions.
