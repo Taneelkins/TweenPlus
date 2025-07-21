@@ -13,7 +13,7 @@ Let's first get the module. There are two main ways:
 * Click `Get Model`.
 * Open the ToolBox in Roblox Studio.
 * Go to the `Inventory` tab.
-* Click on `Text+` to insert.
+* Click on `Tween+` to insert.
 {% endtab %}
 
 {% tab title="GitHub" %}
