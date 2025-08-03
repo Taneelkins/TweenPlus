@@ -12,7 +12,7 @@ After creating a new tween, you can listen to the following [signals](https://al
 Example:
 
 ```lua
-local tween = TweenPlus(workspace.Part, {Transparency = 1}, {Time = 2})
+local tween = Tween(workspace.Part, {Transparency = 1}, {Time = 2})
 tween.Updated:Connect(function(alpha)
 	-- Alpha is a value in the range 0-1.
 	-- That's why we multiply by 100 to convert to percentage.

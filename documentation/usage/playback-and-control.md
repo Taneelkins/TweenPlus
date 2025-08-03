@@ -12,7 +12,7 @@ After creating a new tween, you can use the following methods:
 Example:
 
 ```lua
-local tween = TweenPlus(workspace.Part, {Transparency = 1}, {Time = 2})
+local tween = Tween(workspace.Part, {Transparency = 1}, {Time = 2})
 tween:Start()
 task.wait(1)
 tween:Stop() -- Stop after 1 second of playback.

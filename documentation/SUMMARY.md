@@ -20,6 +20,7 @@
 ## Usage
 
 * [Playback and control](usage/playback-and-control.md)
+* [States](usage/states.md)
 * [Signals](usage/signals.md)
 
 ## Networking

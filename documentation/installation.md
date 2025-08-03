@@ -36,7 +36,7 @@ Modules are usually located in ReplicatedStorage. It's highly recommended to put
 
 ## Dependencies
 
-It's required to install the following for Tween+ to work properly.\
+It's required to install the following for Tween+ to work:\
 
 
 ### Signal
@@ -53,12 +53,15 @@ It's crucial that you give the module the [tag](https://create.roblox.com/docs/s
 
 ### API map
 
-Install [Inxpect](https://devforum.roblox.com/t/3799622), which is an efficient API map builder\
+Install [Inxpect](https://devforum.roblox.com/t/3799622), which is an efficient API map builder.\
 It's crucial that you give the module the [tag](https://create.roblox.com/docs/studio/properties#instance-tags) `APIMap`, so that Tween+ can identify it.
 
 
 
+### Ready players list
 
+Install [Players+](https://github.com/AlexanderLindholt/PlayersPlus), which is a simple custom player list that only includes ready clients.\
+It's crucial that you give the module the [tag](https://create.roblox.com/docs/studio/properties#instance-tags) `PlayerList`, so that Tween+ can identify it.
 
 
 
