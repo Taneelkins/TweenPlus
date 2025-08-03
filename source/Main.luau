@@ -12,7 +12,7 @@
      ====           ======    ======      ========================   ====     ======        :::     
      ====            ====      ====       ========================   ====       ====                
 
-v2.0.2
+v2.1.0
 
 An open-source tweening library for Roblox, featuring advanced
 datatypes, customization, interpolation, and optimization.
@@ -79,6 +79,8 @@ export type Tween = {
 		-- Makes the tween unusable, and ensures it's stopped.
 		function(tween: Tween) end
 	),
+	
+	Playing: boolean,
 	
 	Updated: Signal<number>,
 	Started: Signal,
