@@ -11,7 +11,6 @@ It is crucial that you include these exact packets in the module for the Tween+ 
 local Packet = require(script.Packet)
 
 return {
-	GetAPIMap = Packet():Response(Packet.Any),
 	TweenReady = Packet(),
 	CreateTween = Packet(Packet.NumberU8, Packet.Instance, Packet.Any, Packet.Any),
 	StartTween = Packet(Packet.NumberU8, Packet.Any, Packet.Any),
