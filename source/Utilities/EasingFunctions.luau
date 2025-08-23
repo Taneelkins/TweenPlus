@@ -29,16 +29,17 @@ local function outQuad(alpha)
 	return alpha*(2 - alpha)
 end
 local function inOutQuad(alpha)
-	return if alpha < 0.5 then
-		0.5*(alpha*2)^2
+	alpha *= 2
+	return if alpha < 1 then
+		0.5*alpha^2
 		else
-		1 - 0.5*((1 - alpha)*2)^2
+		1 - 0.5*(2 - alpha)^2
 end
 local function outInQuad(alpha)
 	return if alpha < 0.5 then
-		0.5*(alpha*2)*(2 - alpha*2)
+		0.5*outQuad(alpha*2)
 		else
-		0.5*((2*alpha - 1)^2) + 0.5
+		0.5*inQuad((alpha - 0.5)*2) + 0.5
 end
 
 -- Cubic easing.
@@ -126,21 +127,20 @@ local function inExponential(alpha)
 	return if alpha == 0 then
 		0
 		else
-		2^(10*(alpha - 1)) - 1e-3
+		2^(10*(alpha - 1))
 end
 local function outExponential(alpha)
 	return if alpha == 1 then
 		1
 		else
-		1.001*(1 - 2^(-10*alpha))
+		1 - 2^(-10*alpha)
 end
 local function inOutExponential(alpha)
-	if alpha == 0 then return 0 end
-	if alpha == 1 then return 1 end
-	return if alpha < 0.5 then
-		0.5*2^(10*(2*alpha - 1)) - 0.0005
+	alpha *= 2
+	return if alpha < 1 then
+		0.5*2^(10*(alpha - 1))
 		else
-		0.5*1.0005*(2 - 2^(-10*(2*alpha - 1)))
+		0.5*(2 - 2^(-10*(alpha - 1)))
 end
 local function outInExponential(alpha)
 	return if alpha < 0.5 then
@@ -172,25 +172,37 @@ end
 
 -- Elastic easing.
 local function inElastic(alpha)
-	if alpha == 0 then return 0 end
-	if alpha == 1 then return 1 end
+	local s = nil
+	if elasticInA < 1 then
+		s = elasticInP/4
+	else
+		s = elasticInP/(2*math.pi)*math.asin(1/elasticInA)
+	end
 	local t = alpha - 1
-	return -elasticInA*2^(10*t)*math.sin((t - elasticInS)*(2*math.pi/elasticInP))
+	return -elasticInA*2^(10*t)*math.sin((t - s)*(2*math.pi/elasticInP))
 end
 local function outElastic(alpha)
-	if alpha == 0 then return 0 end
-	if alpha == 1 then return 1 end
-	return elasticOutA*2^(-10*alpha)*math.sin((alpha - elasticOutS)*(2*math.pi/elasticOutP)) + 1
+	local s = nil
+	if elasticOutA < 1 then
+		s = elasticOutP/4
+	else
+		s = elasticOutP/(2*math.pi)*math.asin(1/elasticOutA)
+	end
+	return elasticOutA*2^(-10*alpha)*math.sin((alpha - s)*(2*math.pi/elasticOutP)) + 1
 end
 local function inOutElastic(alpha)
-	if alpha == 0 then return 0 end
-	if alpha == 1 then return 1 end
+	local s = nil
+	if elasticInOutA < 1 then
+		s = elasticInOutP/4
+	else
+		s = elasticInOutP/(2*math.pi)*math.asin(1/elasticInOutA)
+	end
 	alpha *= 2
 	local t = alpha - 1
 	return if alpha < 1 then
-		-0.5*elasticInOutA*2^(10*t)*math.sin((t - elasticInOutS)*(2*math.pi/elasticInOutP))
+		-0.5*elasticInOutA*2^(10*t)*math.sin((t - s)*(2*math.pi/elasticInOutP))
 		else
-		0.5*elasticInOutA*2^(-10*t)*math.sin((t - elasticInOutS)*(2*math.pi/elasticInOutP)) + 1
+		0.5*elasticInOutA*2^(-10*t)*math.sin((t - s)*(2*math.pi/elasticInOutP)) + 1
 end
 local function outInElastic(alpha)
 	return if alpha < 0.5 then

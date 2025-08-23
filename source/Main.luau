@@ -12,7 +12,7 @@
      ====           ======    ======      ========================   ====     ======        :::     
      ====            ====      ====       ========================   ====       ====                
 
-v2.1.0
+v2.2.0
 
 An open-source tweening library for Roblox, featuring advanced
 datatypes, customization, interpolation, and optimization.
@@ -63,20 +63,19 @@ type Signal = types.Signal
 -- Tween types.
 export type Tween = {
 	Start: typeof(
-		-- Starts or resumes playback of the tween.
+		-- Starts or resumes playback.
 		function(tween: Tween) end
 	),
 	Stop: typeof(
-		-- Stops playback of the tween.
-		-- Can be resumed with <code>Start()</code>.
+		-- Stops playback.
 		function(tween: Tween) end
 	),
 	Reset: typeof(
-		-- Stops playback of the tween, and resets to starting values.
+		-- Stops playback, and resets to strting values.
 		function(tween: Tween) end
 	),
 	Destroy: typeof(
-		-- Makes the tween unusable, and ensures it's stopped.
+		-- Stops playback, and erases all related data and methods, making the tween unusable.
 		function(tween: Tween) end
 	),
 	
@@ -87,7 +86,7 @@ export type Tween = {
 	Stopped: Signal,
 	Completed: Signal
 }
-export type Customization = {
+export type Options = {
 	Time: number?,
 	
 	EasingStyle:
@@ -114,15 +113,15 @@ export type Customization = {
 	
 	FPS: number?,
 	
-	Update: "PostSimulation" | "PreSimulation"?
+	Replicate: boolean?
 }
 type Values = {[string]: any}
 type CreateTween = typeof(
 	-- Creates a new tween.
-	function(instance: Instance, values: Values, customization: Customization): Tween end
+	function(instance: Instance, values: Values, options: Options): Tween end
 )
 
--- Run and return depending on run context.
+-- Continue depending on context.
 return if RunService:IsClient() then
 	require(script.Client) :: CreateTween
 else -- Server.

@@ -3,64 +3,59 @@
 -- Services.
 local CollectionService = game:GetService("CollectionService")
 
--- Easing functions.
-local easingFunctions = require(script.Parent.Parent.Utilities.EasingFunctions)
-
 -- Initialize defaults table with default defaults.
 local defaults = {
 	Time = 1,
 	
-	EasingStyle = "Linear",
 	EasingDirection = "In",
 	
 	DelayTime = 0,
 	Reverses = false,
 	RepeatCount = 0,
 	
-	FPS = nil,
-	
-	Update = "PreSimulation"
+	FPS = nil
 }
 
 -- Merge user defaults.
-local customizationOptions = {
-	Time = true,
-	
-	EasingStyle = true,
-	EasingDirection = true,
-	
-	DelayTime = true,
-	Reverses = true,
-	RepeatCount = true,
-	
-	FPS = true,
-	
-	Update = true
-}
 local userDefaults = CollectionService:GetTagged("TweenDefaults")[1]
 if userDefaults then
 	userDefaults = require(userDefaults)
 	if type(userDefaults) == "table" then
+		local options = {
+			Time = true,
+			
+			EasingDirection = true,
+			
+			DelayTime = true,
+			Reverses = true,
+			RepeatCount = true,
+			
+			FPS = true
+		}
 		for key in userDefaults do
-			if customizationOptions[key] then defaults[key] = userDefaults[key] end
+			if options[key] then defaults[key] = userDefaults[key] end
 		end
 	end
 end
 
--- Remove false booleans.
+-- Remove falses and zeroes.
 for key, value in defaults do
-	if value == false then defaults[key] = nil end
+	if value == false then
+		defaults[key] = nil
+	end
 end
 
--- Invert time beforehand.
-defaults.Time = 1/defaults.Time
+if defaults.DelayTime == 0 then defaults.DelayTime = nil end
 
--- Reference easing function.
-local easingStyle = defaults.EasingStyle
-if easingStyle == "Linear" then
-	defaults.EasingFunction = easingFunctions.Linear
-else
-	defaults.EasingFunction = easingFunctions[easingStyle][defaults.EasingDirection]
+-- Invert time.
+defaults.InverseTime = 1/defaults.Time
+defaults.Time = nil
+
+-- Convert FPS to interval.
+local fps = defaults.FPS
+if fps then
+	defaults.Interval = 1/fps
+	defaults.FPS = nil
 end
 
 -- Return final defaults.

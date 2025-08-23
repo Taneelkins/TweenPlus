@@ -115,6 +115,20 @@ local function findKeypoints(source, targetTime)
 	return high, low
 end
 
+local function getAtTime(sequence, time)
+	local index0, index1 = findKeypoints(sequence, time)
+	local keypoint0 = sequence.Keypoints[index0]
+	local keypoint1 = sequence.Keypoints[index1]
+	if keypoint0.Time == keypoint1.Time then
+		return keypoint0.Value, keypoint0.Envelope
+	else
+		local point = (time - keypoint0.Time)/(keypoint1.Time - keypoint0.Time)
+		return
+			keypoint0.Value + (keypoint1.Value - keypoint0.Value)*point,
+			keypoint0.Envelope + (keypoint1.Envelope - keypoint0.Envelope)*point
+	end
+end
+
 return {
 	Normal = {
 		number = function(a, b)
@@ -149,10 +163,10 @@ return {
 		end,
 		
 		UDim = function(a, b)
-			local scaleDiff = b.Scale - a.Scale
-			local offsetDiff = b.Offset - a.Offset
+			local scaleDifference = b.Scale - a.Scale
+			local offsetDifference = b.Offset - a.Offset
 			return function(alpha)
-				return UDim.new(a.Scale + scaleDiff*alpha, a.Offset + offsetDiff*alpha)
+				return UDim.new(a.Scale + scaleDifference*alpha, a.Offset + offsetDifference*alpha)
 			end
 		end,
 		
@@ -208,55 +222,38 @@ return {
 				if alpha == 0 then return a end
 				if alpha == 1 then return b end
 				
-				local l = l0 + (l1 - l0)*alpha
-				local a_lab = a0 + (a1 - a0)*alpha
-				local b_lab = b0 + (b1 - b0)*alpha
-				return oklabToRGB(l, a_lab, b_lab)
+				return oklabToRGB(
+					l0 + (l1 - l0)*alpha,
+					a0 + (a1 - a0)*alpha,
+					b0 + (b1 - b0)*alpha
+				)
 			end
 		end,
 		
 		NumberRange = function(a, b)
-			local minDiff = b.Min - a.Min
-			local maxDiff = b.Max - a.Max
+			local minimumDifference = b.Min - a.Min
+			local maximumDifference = b.Max - a.Max
 			return function(alpha)
-				return NumberRange.new(a.Min + minDiff*alpha, a.Max + maxDiff*alpha)
+				return NumberRange.new(a.Min + minimumDifference*alpha, a.Max + maximumDifference*alpha)
 			end
 		end,
 		
 		NumberSequence = function(a, b)
-			local uniqueTimes = {}
 			local aValues = {}
 			local bValues = {}
 			local aEnvelopes = {}
 			local bEnvelopes = {}
 			
-			local function getAtTime(seq, time)
-				local i0, i1 = findKeypoints(seq, time)
-				local kp0 = seq.Keypoints[i0]
-				local kp1 = seq.Keypoints[i1]
-				if kp0.Time == kp1.Time then
-					return kp0.Value, kp0.Envelope
-				else
-					local p = (time - kp0.Time)/(kp1.Time - kp0.Time)
-					local value = kp0.Value + (kp1.Value - kp0.Value)*p
-					local envelope = kp0.Envelope + (kp1.Envelope - kp0.Envelope)*p
-					return value, envelope
-				end
+			local uniqueTimes = {}
+			for _, keypoint in a.Keypoints do
+				table.insert(uniqueTimes, keypoint.Time)
 			end
-			
-			local timeSet = {}
-			for _, kp in ipairs(a.Keypoints) do
-				timeSet[kp.Time] = true
-			end
-			for _, kp in ipairs(b.Keypoints) do
-				timeSet[kp.Time] = true
-			end
-			for time in pairs(timeSet) do
-				table.insert(uniqueTimes, time)
+			for _, keypoint in b.Keypoints do
+				table.insert(uniqueTimes, keypoint.Time)
 			end
 			table.sort(uniqueTimes)
 			
-			for _, time in ipairs(uniqueTimes) do
+			for _, time in uniqueTimes do
 				local aValue, aEnvelope = getAtTime(a, time)
 				local bValue, bEnvelope = getAtTime(b, time)
 				table.insert(aValues, aValue)
@@ -267,49 +264,33 @@ return {
 			
 			return function(alpha)
 				local keypoints = {}
-				for index, time in ipairs(uniqueTimes) do
-					local value = aValues[index] + (bValues[index] - aValues[index])*alpha
-					local envelope = aEnvelopes[index] + (bEnvelopes[index] - aEnvelopes[index])*alpha
-					table.insert(keypoints, NumberSequenceKeypoint.new(time, value, envelope))
+				for index, time in uniqueTimes do
+					table.insert(keypoints, NumberSequenceKeypoint.new(
+						time,
+						aValues[index] + (bValues[index] - aValues[index])*alpha,
+						aEnvelopes[index] + (bEnvelopes[index] - aEnvelopes[index])*alpha
+					))
 				end
 				return NumberSequence.new(keypoints)
 			end
 		end,
 		
 		ColorSequence = function(a, b)
-			local uniqueTimes = {}
 			local aValues = {}
 			local bValues = {}
 			local aEnvelopes = {}
 			local bEnvelopes = {}
 			
-			local function getAtTime(seq, time)
-				local i0, i1 = findKeypoints(seq, time)
-				local kp0 = seq.Keypoints[i0]
-				local kp1 = seq.Keypoints[i1]
-				if kp0.Time == kp1.Time then
-					return kp0.Value, kp0.Envelope
-				else
-					local p = (time - kp0.Time)/(kp1.Time - kp0.Time)
-					local value = kp0.Value:Lerp(kp1.Value, p)
-					local envelope = kp0.Envelope + (kp1.Envelope - kp0.Envelope)*p
-					return value, envelope
-				end
+			local uniqueTimes = {}
+			for _, keypoint in a.Keypoints do
+				table.insert(uniqueTimes, keypoint.Time)
 			end
-			
-			local timeSet = {}
-			for _, kp in ipairs(a.Keypoints) do
-				timeSet[kp.Time] = true
-			end
-			for _, kp in ipairs(b.Keypoints) do
-				timeSet[kp.Time] = true
-			end
-			for time in pairs(timeSet) do
-				table.insert(uniqueTimes, time)
+			for _, keypoint in b.Keypoints do
+				table.insert(uniqueTimes, keypoint.Time)
 			end
 			table.sort(uniqueTimes)
 			
-			for _, time in ipairs(uniqueTimes) do
+			for _, time in uniqueTimes do
 				local aValue, aEnvelope = getAtTime(a, time)
 				local bValue, bEnvelope = getAtTime(b, time)
 				table.insert(aValues, aValue)
@@ -320,15 +301,19 @@ return {
 			
 			return function(alpha)
 				local keypoints = {}
-				for index, time in ipairs(uniqueTimes) do
-					local value = aValues[index]:Lerp(bValues[index], alpha)
-					local envelope = aEnvelopes[index] + (bEnvelopes[index] - aEnvelopes[index])*alpha
-					table.insert(keypoints, ColorSequenceKeypoint.new(time, value, envelope))
+				for index, time in uniqueTimes do
+					table.insert(keypoints, ColorSequenceKeypoint.new(
+						time,
+						aValues[index]:Lerp(bValues[index], alpha),
+						aEnvelopes[index] + (bEnvelopes[index] - aEnvelopes[index])*alpha
+					))
 				end
 				return ColorSequence.new(keypoints)
 			end
 		end
-	} :: {(a: any, b: any) -> (alpha: number) -> any},
+	} :: {
+		(a: any, b: any) -> ((alpha: number) -> any)
+	},
 	
 	Advanced = {
 		Pivot = {

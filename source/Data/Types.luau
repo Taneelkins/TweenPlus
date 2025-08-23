@@ -1,37 +1,38 @@
 -- Signal types from Signal+.
-type Connection = {
+export type Connection = {
 	Connected: boolean,
 	Disconnect: typeof(
-		-- Disconnects the connection.
-		-- To reconnect, make a new connection.
+		-- Erases the connection.
 		function(connection: Connection) end
 	)
 }
 export type Signal<Parameters...> = {
 	Connect: typeof(
-		-- Connects the given function.
+		-- Connects a function.
 		function(signal: Signal<Parameters...>, callback: (Parameters...) -> ()): Connection end
 	),
 	Once: typeof(
-		-- Connects the given function, but disconnects after first fire.
+		-- Connects a function, then auto-disconnects after the first call.
 		function(signal: Signal<Parameters...>, callback: (Parameters...) -> ()): Connection end
 	),
 	Wait: typeof(
-		-- Yields the current thread until the next fire.
+		-- Yields the calling thread until the next fire.
 		function(signal: Signal<Parameters...>): Parameters... end
 	),
 	
 	Fire: typeof(
-		-- Fires all callbacks and resumes all waiting threads.
+		-- Runs all connected functions, and resumes all waiting threads.
 		function(signal: Signal<Parameters...>, ...: Parameters...) end
 	),
 	
 	DisconnectAll: typeof(
-		-- Disconnects all connections.
+		-- Erases all connections.<br>
+		-- <em>Much faster than calling <code>Disconnect</code> on each.</em>
 		function(signal: Signal<Parameters...>) end
 	),
 	Destroy: typeof(
-		-- Disconnects all connections, and makes the signal unusable.
+		-- Erases all connections and methods, making the signal unusable.<br>
+		-- Remove references to the signal to delete it completely.
 		function(signal: Signal<Parameters...>) end
 	)
 }

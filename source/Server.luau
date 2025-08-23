@@ -26,7 +26,7 @@ if not Signal then error("Could not find a signal module.") end
 Signal = require(Signal)
 if type(Signal) == "table" and Signal.new then Signal = Signal.new end
 
--- Customization defaults.
+-- Option defaults.
 local defaults = require(data.Defaults)
 
 -- Shared types.
@@ -39,17 +39,13 @@ type Signal = types.Signal
 type InternalTween = types.InternalTween & {
 	Identifier: number,
 	
-	PlayerConnection: RBXScriptConnection,
+	PlayerConnection: Signal,
+	DestroyConnection: Signal,
 	
 	Updated: Signal<number>,
 	Started: Signal,
 	Stopped: Signal,
 	Completed: Signal,
-}
-
-local updates = {
-	PreSimulation = true,
-	PostSimulation = true
 }
 
 -- Network packets.
@@ -76,8 +72,8 @@ for identifier = 0, 255, 1 do
 	identifiers[identifier] = true
 end
 
--- Tweens collection.
-local tweens: {InternalTween} = {}
+-- Active tweens collection.
+local tweens: {InternalTween} = table.create(256)
 
 -- Tween functions.
 local function stop(tween: InternalTween)
@@ -85,7 +81,7 @@ local function stop(tween: InternalTween)
 	if not tween.Playing then return end
 	
 	-- Set playing boolean.
-	tween.Playing = false
+	tween.Playing = nil
 	
 	-- Update instance values.
 	local alpha = tween.Ease(tween.Alpha)
@@ -104,14 +100,15 @@ local function stop(tween: InternalTween)
 	end
 	
 	-- Set time markers.
-	tween.StopTime = time()
+	tween.StopTime = os.clock()
 	
 	-- Fire stopped signal.
 	tween.Stopped:Fire()
 end
 local function destroy(tween: InternalTween)
 	-- Disconnect new player connection.
-	tween.PlayerConnection:Disconnect()
+	local playerConnection = tween.PlayerConnection
+	if playerConnection then playerConnection:Disconnect() end
 	-- Disconnect destroy connection.
 	tween.DestroyConnection:Disconnect()
 	
@@ -157,7 +154,7 @@ end
 RunService.PostSimulation:Connect(function()
 	if #tweens == 0 then return end
 	
-	local currentTime = time()
+	local currentTime = os.clock()
 	for _, tween in tweens do
 		-- Ensure desired interval (specified in FPS).
 		if tween.Interval then
@@ -260,7 +257,7 @@ Tween.Start = function(tween: InternalTween)
 	end
 	
 	-- Set time markers.
-	local stopDuration = time() - tween.StopTime
+	local stopDuration = os.clock() - tween.StopTime
 	tween.StartTime += stopDuration
 	if tween.Interval then tween.LastUpdate = -math.huge end
 	if tween.WaitTime then tween.WaitTime += stopDuration end
@@ -309,7 +306,7 @@ Tween.Destroy = function(tween: InternalTween)
 end
 
 -- Tween creation.
-return function(instance, values, customization)
+return function(instance, values, options)
 	-- Argument errors.
 	if typeof(instance) ~= "Instance" then error("No instance provided.", 2) end
 	if type(values) ~= "table" or not next(values) then error("No values provided.", 2) end
@@ -321,82 +318,85 @@ return function(instance, values, customization)
 	-- Handle values.
 	local updateFunctions, resetFunctions = getUpdateFunctions(apiMap, instance, values)
 	
-	-- Handle customization.
-	if type(customization) ~= "table" then customization = {} end
+	-- Handle options.
+	if type(options) ~= "table" then options = {} end
 	
-	local customizationForClient = {}
+	local optionsForClients = {}
 	
-	local tweenTime = customization.Time
+	local tweenTime = options.Time
 	if type(tweenTime) ~= "number" then
 		tweenTime = defaults.InverseTime
-	elseif tweenTime <= 0 then
-		tweenTime = 0
 	else
-		tweenTime = 1/tweenTime
+		if tweenTime <= 0 then
+			tweenTime = 0
+		else
+			tweenTime = 1/tweenTime
+		end
+		if tweenTime ~= defaults.Time then optionsForClients[1] = tweenTime end
 	end
-	customizationForClient[1] = tweenTime
 	
 	local ease = nil
 	do
-		local easingStyle = customization.EasingStyle
+		local easingStyle = options.EasingStyle
 		local easing = easingFunctions[easingStyle]
 		if not easing then
-			easing = easingFunctions[defaults.EasingStyle]
-			easingStyle = defaults.EasingStyle
+			easingStyle = "Linear"
+			easing = easingFunctions.Linear
 		end
-		customizationForClient[2] = easingStyle
 		if easingStyle == "Linear" then
 			ease = easing
 		else
-			local easingDirection = customization.EasingDirection
+			local easingDirection = options.EasingDirection
 			ease = easing[easingDirection]
 			if not ease then
 				easingDirection = defaults.EasingDirection
 				ease = easing[easingDirection]
 			end
-			customizationForClient[3] = easingDirection
+			
+			optionsForClients[2] = easingStyle
+			optionsForClients[3] = easingDirection
 		end
 	end
 	
 	
-	local delayTime = customization.DelayTime
+	local delayTime = options.DelayTime
 	if type(delayTime) ~= "number" or delayTime <= 0 then
-		delayTime = nil
+		delayTime = defaults.DelayTime
 	end
-	customizationForClient[4] = delayTime
+	if delayTime ~= defaults.DelayTime then optionsForClients[4] = delayTime end
 	
-	local reverses = customization.Reverses
-	if reverses ~= true then
+	local reverses = options.Reverses
+	if reverses == false then
 		reverses = nil
+		if defaults.Reverses then optionsForClients[4] = false end
+	elseif reverses == true then
+		if not defaults.Reverses then optionsForClients[4] = true end
+	else
+		reverses = defaults.Reverses
 	end
-	customizationForClient[5] = reverses
 	
-	local repeatCount = customization.RepeatCount
+	local repeatCount = options.RepeatCount
 	if type(repeatCount) ~= "number" then
 		repeatCount = defaults.RepeatCount
-	elseif repeatCount < 0 then
-		repeatCount = -1
-	end
-	customizationForClient[6] = repeatCount
-	
-	
-	local fps = customization.FPS
-	local interval = nil
-	if type(fps) == "number" then
-		interval = 1/fps
-	end
-	customizationForClient[7] = interval
-	
-	local update = customization.Update
-	if updates[update] then
-		customizationForClient[8] = update
 	else
-		customizationForClient[8] = defaults.Update
+		if repeatCount < 0 then repeatCount = -1 end
+		if repeatCount ~= defaults.RepeatCount then optionsForClients[6] = repeatCount end
+	end
+	
+	local interval = options.FPS
+	if type(interval) == "number" then
+		interval = 1/interval
+		if interval ~= defaults.Interval then optionsForClients[7] = interval end
+	else
+		interval = defaults.Interval
 	end
 	
 	-- Notify all clients.
-	for _, player in players do
-		createTweenPacket:FireClient(player, identifier, instance, values, customizationForClient)
+	local replicate = options.Replicate
+	if replicate ~= false then 
+		for _, player in players do
+			createTweenPacket:FireClient(player, identifier, instance, values, optionsForClients)
+		end
 	end
 	
 	-- Create tween.
@@ -408,18 +408,15 @@ return function(instance, values, customization)
 		end),
 		
 		-- New player handling.
-		PlayerConnection = loadedPacket.OnServerEvent:Connect(function(player)
-			createTweenPacket:FireClient(player, identifier, instance, values, customizationForClient)
+		PlayerConnection = if replicate ~= false then loadedPacket.OnServerEvent:Connect(function(player)
+			createTweenPacket:FireClient(player, identifier, instance, values, optionsForClients)
 			if not tween.StopTime then
-				startTweenPacket:FireClient(player, identifier, time() - tween.StartTime, tween.Repetitions)
+				startTweenPacket:FireClient(player, identifier, os.clock() - tween.StartTime, tween.Repetitions)
 			end
-		end),
+		end) else nil,
 		
 		-- Identifier.
 		Identifier = identifier,
-		
-		-- Public booleans.
-		Playing = false,
 		
 		-- Signals.
 		Updated = Signal(),
@@ -435,7 +432,7 @@ return function(instance, values, customization)
 		UpdateFunctions = updateFunctions,
 		ResetFunctions = resetFunctions,
 		
-		-- Customization.
+		-- Options.
 		InverseTweenTime = tweenTime,
 		Ease = ease,
 		DelayTime = delayTime,

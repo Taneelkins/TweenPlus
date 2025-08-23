@@ -4,13 +4,15 @@ local valueFunctions = require(script.Parent.ValueFunctions)
 local normalValueFunctions = valueFunctions.Normal
 local advancedValueFunctions = valueFunctions.Advanced
 
--- Return update functions function.
+-- Update functions function.
 return function(apiMap, instance, values)
-	local updateFunctions, resetFunctions = {}, {}
-	
+	-- Get properties and verify class.
 	local classProperties = apiMap[instance.ClassName]
 	if not classProperties then error("Could not identify class.", 3) end
 
+	-- Verify values and add update functions for each.
+	local updateFunctions, resetFunctions = {}, {}
+	
 	for valueName, valueDestination in values do
 		if type(valueName) ~= "string" then error("Invalid value name of type '"..typeof(valueName).."' instead of string.", 3) end
 		
@@ -39,7 +41,7 @@ return function(apiMap, instance, values)
 				if not instance:IsA(value.Target) then error("'"..instance:GetFullName().."'' doesn't support '"..valueName.."'.", 3) end
 				
 				local original = value.Get(instance)
-				local set = value.Set()
+				local set = value.Set
 				table.insert(updateFunctions, function(alpha)
 					set(instance, original, valueDestination, alpha)
 				end)
@@ -48,11 +50,11 @@ return function(apiMap, instance, values)
 				end)
 			else
 				-- Property.
-				local propertyType = classProperties[valueName].Type
-				if not propertyType then error("'"..valueName.."' is not a valid property of '"..instance:GetFullName().."'.", 3) end
+				local property = classProperties[valueName]
+				if not property then error("'"..valueName.."' is not a valid property of '"..instance:GetFullName().."'.", 3) end
 				
 				local valueType = typeof(valueDestination)
-				if valueType ~= propertyType then error("'"..valueName.."' is not of correct type '"..propertyType.."'.", 3) end
+				if valueType ~= property.Type then error("'"..valueName.."' is not of correct type '"..property.."'.", 3) end
 				
 				value = normalValueFunctions[valueType]
 				if not value then error("'"..typeof(valueDestination).."' data type is not supported.", 3) end

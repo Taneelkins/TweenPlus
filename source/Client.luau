@@ -14,30 +14,46 @@ local easingFunctions = require(utilities.EasingFunctions)
 local getUpdateFunctions = require(utilities.UpdateFunctions)
 
 -- Signal library.
-local Signal = CollectionService:GetTagged("Signal")[1]
-if not Signal then error("Could not find a signal library.") end
-Signal = require(Signal)
-if type(Signal) == "table" and Signal.new then Signal = Signal.new end
+local Signal = nil
+if plugin then
+	for _, instance in plugin:GetDescendants() do
+		if instance:HasTag("Signal") then
+			Signal = require(instance)
+			if type(Signal) == "table" and Signal.new then Signal = Signal.new end
+			break
+		end
+	end
+	if not Signal then error("Could not find a signal library.") end
+else
+	Signal = CollectionService:GetTagged("Signal")[1]
+	if not Signal then error("Could not find a signal library.") end
+	Signal = require(Signal)
+	if type(Signal) == "table" and Signal.new then Signal = Signal.new end
+end
 
--- Game context detection.
-local gameContext = script:IsDescendantOf(game)
+-- Attempt to find the plugin object.
+local plugin = script:FindFirstAncestorOfClass("Plugin")
 
 -- Network packets and Roblox API map.
 local packets = nil
 local apiMap = nil
-if gameContext then
+if plugin then
+	for _, instance in plugin:GetDescendants() do
+		if instance:HasTag("APIMap") then
+			apiMap = require(instance)
+			break
+		end
+	end
+	if not apiMap then error("Could not find APIMap module.") end
+else -- Game context.
 	packets = CollectionService:GetTagged("Packets")[1]
 	if not packets then error("Could not find packets module.") end
 	packets = require(packets)
 	
 	apiMap = packets.GetAPIMap:Fire()
-else -- Plugin context.
-	local apiMap = CollectionService:GetTagged("APIMap")[1]
-	if not apiMap then error("Could not find APIMap module.") end
-	apiMap = require(apiMap)
 end
 
--- Customization defaults.
+-- Options defaults.
 local defaults = require(data.Defaults)
 
 -- Shared types.
@@ -54,11 +70,8 @@ type InternalTween = types.InternalTween & {
 	Completed: Signal?,
 }
 
--- Store update events, each with its own tweens collection.
-local updates: {{InternalTween}} = {
-	PreSimulation = {},
-	PostSimulation = {},
-}
+-- Active tweens collection.
+local tweens: {InternalTween} = {}
 
 -- Tween functions.
 local function stop(tween: InternalTween)
@@ -66,10 +79,9 @@ local function stop(tween: InternalTween)
 	if not tween.Playing then return end
 	
 	-- Set playing boolean.
-	tween.Playing = false
+	tween.Playing = nil
 	
 	-- Tween removal.
-	local tweens = tween.Table
 	local lastIndex = #tweens
 	local index = tween.Index
 	if index == lastIndex then
@@ -82,7 +94,7 @@ local function stop(tween: InternalTween)
 	end
 	
 	-- Set time markers.
-	tween.StopTime = time()
+	tween.StopTime = os.clock()
 end
 local function destroy(tween: InternalTween)
 	-- Disconnect destroy connection.
@@ -91,7 +103,6 @@ local function destroy(tween: InternalTween)
 	-- Ensure no playback.
 	if tween.Playing then
 		-- Tween removal.
-		local tweens = tween.Table
 		local lastIndex = #tweens
 		local index = tween.Index
 		if index == lastIndex then
@@ -129,40 +140,37 @@ local function start(tween: InternalTween, startOverride)
 	local instance = tween.Instance
 	local values = tween.Values
 	
-	for _, tweens in updates do
-		for _, otherTween in tweens do
-			if otherTween.Instance ~= instance then continue end
-			
-			for value in otherTween.Values do
-				if values[value] then
-					stop(otherTween)
-					if otherTween.Stopped then otherTween.Stopped:Fire() end
-					tweens[otherTween] = nil
-					break
-				end
+	for _, otherTween in tweens do
+		if otherTween.Instance ~= instance then continue end
+		
+		for value in otherTween.Values do
+			if values[value] then
+				stop(otherTween)
+				if otherTween.Stopped then otherTween.Stopped:Fire() end
+				tweens[otherTween] = nil
+				break
 			end
 		end
 	end
 	
 	-- Set time markers.
-	local stopDuration = time() - tween.StopTime
+	local stopDuration = os.clock() - tween.StopTime
 	if not startOverride then tween.StartTime += stopDuration end
 	if tween.Interval then tween.LastUpdate = -math.huge end
 	if tween.WaitTime then tween.WaitTime += stopDuration end
 	tween.StopTime = nil
 	
 	-- Add tween.
-	local tweens = tween.Table
 	table.insert(tweens, tween)
 	tween.Index = #tweens
 end
 
--- Setup tween processing for all events.
-for event, tweens in updates do
-	RunService[event]:Connect(function()
+-- Setup tween processing.
+do
+	local connection = (if plugin then RunService.Heartbeat else RunService.PreSimulation):Connect(function()
 		if #tweens == 0 then return end
 		
-		local currentTime = time()
+		local currentTime = os.clock()
 		for _, tween in tweens do
 			-- Ensure desired interval (specified in FPS).
 			if tween.Interval then
@@ -177,22 +185,21 @@ for event, tweens in updates do
 				tween.StartTime = currentTime
 			end
 			
-			-- Calculate alpha.
+			-- Calculate progress and update values.
 			local alpha = (currentTime - tween.StartTime)*tween.InverseTweenTime
 			
 			local phaseCompleted = alpha >= 1
 			
-			local easedAlpha = nil
 			if phaseCompleted then
 				if tween.Reverse then alpha = 0 else alpha = 1 end
-				easedAlpha = alpha
+				
+				for _, update in tween.UpdateFunctions do update(alpha) end
 			else
 				if tween.Reverse then alpha = 1 - alpha end
-				easedAlpha = tween.Ease(alpha)
+				
+				local easedAlpha = tween.Ease(alpha)
+				for _, update in tween.UpdateFunctions do update(easedAlpha) end
 			end
-			
-			-- Update values.
-			for _, update in tween.UpdateFunctions do update(easedAlpha) end
 			
 			-- Fire updated signal with raw alpha.
 			local updateSignal = tween.Updated
@@ -241,6 +248,12 @@ for event, tweens in updates do
 			end
 		end
 	end)
+	
+	if plugin then
+		plugin.Unloading:Connect(function()
+			connection:Disconnect()
+		end)
+	end
 end
 
 -- Tween class.
@@ -273,7 +286,7 @@ Tween.Destroy = destroy
 
 -- Server tweening.
 if packets then
-	local serverTweens = {}
+	local serverTweens = table.create(256)
 	
 	local function serverDestroy(tween: InternalTween)
 		-- Disconnect destroy connection.
@@ -282,7 +295,6 @@ if packets then
 		-- Ensure no playback.
 		if not tween.StopTime then
 			-- Tween removal.
-			local tweens = tween.Table
 			local lastIndex = #tweens
 			local index = tween.Index
 			if index == lastIndex then
@@ -301,24 +313,21 @@ if packets then
 		setmetatable(tween, nil)
 	end
 	
-	packets.CreateTween.OnClientEvent:Connect(function(identifier, instance, values, customization)
+	packets.CreateTween.OnClientEvent:Connect(function(identifier, instance, values, options)
 		-- Argument errors.
-		if not instance then error("Could not find instance on client.") end
+		if not instance then if RunService:IsStudio() then error("Could not find instance on client.") end return end
 		
 		-- Handle values.
 		local updateFunctions, resetFunctions = getUpdateFunctions(apiMap, instance, values)
 		
 		-- Create tween.
-		local easingStyle = customization[2]
+		local easingStyle = options[2]
 		local tween = nil
 		tween = {
 			-- Handle instance destroy.
 			DestroyConnection = instance.Destroying:Connect(function()
-				destroy(tween)
+				serverDestroy(tween)
 			end),
-			
-			-- Public booleans.
-			Playing = false,
 			
 			-- Main arguments.
 			Instance = instance,
@@ -328,14 +337,16 @@ if packets then
 			UpdateFunctions = updateFunctions,
 			ResetFunctions = resetFunctions,
 			
-			-- Customization.
-			InverseTweenTime = customization[1],
-			Ease = if easingStyle == "Linear" then easingFunctions.Linear else easingFunctions[easingStyle][customization[3]],
-			DelayTime = customization[4],
-			Reverses = customization[5],
-			RepeatCount = customization[6],
-			Interval = customization[7],
-			Table = updates[customization[8]],
+			-- Options.
+			InverseTweenTime = options[1] or defaults.InverseTime,
+			Ease = if easingStyle then
+				if easingStyle == "Linear" then easingFunctions.Linear else easingFunctions[easingStyle][options[3]]
+			else
+				easingFunctions.Linear,
+			DelayTime = options[4] or defaults.DelayTime,
+			Reverses = options[5] or defaults.Reverses,
+			RepeatCount = options[6] or defaults.RepeatCount,
+			Interval = options[7] or defaults.Interval,
 			
 			-- Time markers.
 			StartTime = 0,
@@ -344,11 +355,6 @@ if packets then
 			-- Trackers.
 			Repetitions = 0
 		}
-		
-		-- Handle instance destroy.
-		instance.Destroying:Connect(function()
-			serverDestroy(tween)
-		end)
 		
 		-- Store the tween with its given identifier.
 		serverTweens[identifier] = tween
@@ -360,11 +366,13 @@ if packets then
 		
 		if repetitions then
 			tween.Repetitions = repetitions
-			if tween.Reverses then tween.Reverse = repetitions%2 == 1 end
+			if tween.Reverses then
+				tween.Reverse = if repetitions%2 == 1 then true else nil
+			end
 		end
 		if tween.StopTime then
 			if runTime then
-				tween.StartTime = time() - runTime
+				tween.StartTime = os.clock() - runTime
 				start(tween, true)
 			else
 				start(tween)
@@ -393,18 +401,18 @@ if packets then
 end
 
 -- Local tween creation.
-return function(instance, values, customization)
+return function(instance, values, options)
 	-- Argument errors.
-	if typeof(instance) ~= "Instance" then error("No instance provided.", 2) end
-	if type(values) ~= "table" or not next(values) then error("No values provided.", 2) end
+	if typeof(instance) ~= "Instance" then error("Invalid instance.", 2) end
+	if type(values) ~= "table" or not next(values) then error("Invalid values.", 2) end
 	
 	-- Handle values.
 	local updateFunctions, resetFunctions = getUpdateFunctions(apiMap, instance, values)
 	
-	-- Handle customization.
-	if type(customization) ~= "table" then customization = {} end
+	-- Handle options.
+	if type(options) ~= "table" then options = {} end
 	
-	local tweenTime = customization.Time
+	local tweenTime = options.Time
 	if type(tweenTime) ~= "number" then
 		tweenTime = defaults.InverseTime
 	elseif tweenTime <= 0 then
@@ -415,34 +423,38 @@ return function(instance, values, customization)
 	
 	local ease = nil
 	do
-		local easingStyle = customization.EasingStyle
+		local easingStyle = options.EasingStyle
 		local easing = easingFunctions[easingStyle]
 		if not easing then
-			easing = easingFunctions[defaults.EasingStyle]
-			easingStyle = defaults.EasingStyle
+			easingStyle = "Linear"
+			easing = easingFunctions.Linear
 		end
 		if easingStyle == "Linear" then
 			ease = easing
 		else
-			ease = easing[customization.EasingDirection]
+			local easingDirection = options.EasingDirection
+			ease = easing[easingDirection]
 			if not ease then
-				ease = easing[defaults.EasingDirection]
+				easingDirection = defaults.EasingDirection
+				ease = easing[easingDirection]
 			end
 		end
 	end
 	
 	
-	local delayTime = customization.DelayTime
+	local delayTime = options.DelayTime
 	if type(delayTime) ~= "number" or delayTime <= 0 then
-		delayTime = nil
+		delayTime = defaults.DelayTime
 	end
 	
-	local reverses = customization.Reverses
-	if reverses ~= true then
+	local reverses = options.Reverses
+	if reverses == false then
 		reverses = nil
+	elseif reverses ~= true then
+		reverses = defaults.Reverses
 	end
 	
-	local repeatCount = customization.RepeatCount
+	local repeatCount = options.RepeatCount
 	if type(repeatCount) ~= "number" then
 		repeatCount = defaults.RepeatCount
 	elseif repeatCount < 0 then
@@ -450,15 +462,9 @@ return function(instance, values, customization)
 	end
 	
 	
-	local fps = customization.FPS
-	local interval = nil
-	if type(fps) == "number" then
-		interval = 1/fps
-	end
-	
-	local update = customization.Update
-	if not updates[update] then
-		update = defaults.Update
+	local interval = options.FPS
+	if type(interval) == "number" then
+		interval = 1/interval
 	end
 	
 	-- Create tween.
@@ -468,9 +474,6 @@ return function(instance, values, customization)
 		DestroyConnection = instance.Destroying:Connect(function()
 			destroy(tween)
 		end),
-		
-		-- Public booleans.
-		Playing = false,
 		
 		-- Signals.
 		Updated = Signal(),
@@ -486,14 +489,13 @@ return function(instance, values, customization)
 		UpdateFunctions = updateFunctions,
 		ResetFunctions = resetFunctions,
 		
-		-- Customization.
+		-- Options.
 		InverseTweenTime = tweenTime,
 		Ease = ease,
 		DelayTime = delayTime,
 		Reverses = reverses,
 		RepeatCount = repeatCount,
 		Interval = interval,
-		Table = updates[update],
 		
 		-- Time markers.
 		StartTime = 0,
