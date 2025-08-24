@@ -27,7 +27,6 @@ Here's the default defaults:
 return {
 	Time = 1,
 	
-	EasingStyle = "Linear",
 	EasingDirection = "In",
 	
 	DelayTime = 0,
@@ -36,6 +35,6 @@ return {
 	
 	FPS = nil,
 	
-	UpdateEvent = "PreSimulation"
+	Update = "PreSimulation"
 }
 ```

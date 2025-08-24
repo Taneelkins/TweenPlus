@@ -5,7 +5,11 @@ icon: list
 # Customization options
 
 {% hint style="success" %}
-The following defaults can be overwritten by custom defaults.
+Most of the following defaults can be overwritten by [custom defaults](custom-defaults.md).
+{% endhint %}
+
+{% hint style="warning" %}
+Defaults marked with _<mark style="color:$warning;">**colored bold italic**</mark>_ can't be overwritten by custom defaults.
 {% endhint %}
 
 
@@ -28,10 +32,14 @@ The following defaults can be overwritten by custom defaults.
 * **FPS:** number\
   &#xNAN;_&#x44;efault:_ `nil`\
   ​
-* **UpdateEvent:** "PreSimulation" | "PostSimulation"\
-  &#xNAN;_&#x44;efault:_ `PreSimulation`&#x20;
+* **Update:** "PreSimulation" | "PostSimulation"\
+  &#xNAN;_&#x44;efault:_ `PreSimulation`\
 
-&#x20;
+* **Replicate:** boolean\
+  &#xNAN;_&#x44;efault: <mark style="color:$warning;">**`true`**</mark>_\
+
+
+
 
 
 

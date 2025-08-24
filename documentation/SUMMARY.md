@@ -15,6 +15,7 @@
   * [Customization options](customization/customization-options.md)
   * [FPS](customization/fps.md)
   * [Update](customization/update.md)
+  * [Replicate](customization/replicate.md)
   * [Custom defaults](customization/custom-defaults.md)
 
 ## Usage
