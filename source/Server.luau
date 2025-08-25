@@ -4,10 +4,46 @@ local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
+-- Network packets.
+local packets = CollectionService:GetTagged("Packets")[1]
+if not packets then error("Could not find packets module.") end
+packets = require(packets)
+
+local requiredPackets = {
+	"CreateTween",
+	"StartTween",
+	"StopTween",
+	"ResetTween",
+	"DestroyTween"
+}
+local tweenPackets = {}
+for _, name in requiredPackets do
+	if packets[name] then table.insert(tweenPackets, name) end
+end
+if #tweenPackets ~= #requiredPackets then
+	if #tweenPackets > 0 and RunService:IsStudio() then
+		for _, name in requiredPackets do
+			if not tweenPackets[name] then warn("Packet '"..name.."' is missing for server tweening to work.") end
+		end
+	end
+	error("Missing packets for server tweening to work.")
+end
+
 -- Ready players table.
 local players = CollectionService:GetTagged("PlayerList")[1]
 if not players then error("Could not find a player-list module.") end
 players = require(players)
+
+-- Signal library.
+local Signal = CollectionService:GetTagged("Signal")[1]
+if not Signal then error("Could not find a signal module.") end
+Signal = require(Signal)
+if type(Signal) == "table" and Signal.new then Signal = Signal.new end
+
+-- Roblox API map.
+local apiMap = CollectionService:GetTagged("APIMap")[1]
+if not apiMap then error("Could not find APIMap module.") end
+apiMap = require(apiMap)
 
 -- Directories.
 local root = script.Parent
@@ -19,12 +55,6 @@ local easingFunctions = require(utilities.EasingFunctions)
 
 -- Updation functions.
 local getUpdateFunctions = require(utilities.UpdateFunctions)
-
--- Signal library.
-local Signal = CollectionService:GetTagged("Signal")[1]
-if not Signal then error("Could not find a signal module.") end
-Signal = require(Signal)
-if type(Signal) == "table" and Signal.new then Signal = Signal.new end
 
 -- Option defaults.
 local defaults = require(data.Defaults)
@@ -48,16 +78,6 @@ type InternalTween = types.InternalTween & {
 	Completed: Signal,
 }
 
--- Network packets.
-local packets = CollectionService:GetTagged("Packets")[1]
-if not packets then error("Could not find packets module.") end
-packets = require(packets)
-
--- Roblox API map.
-local apiMap = CollectionService:GetTagged("APIMap")[1]
-if not apiMap then error("Could not find APIMap module.") end
-apiMap = require(apiMap)
-
 -- Quick access to packets.
 local loadedPacket = packets.Loaded
 local createTweenPacket = packets.CreateTween
@@ -80,7 +100,7 @@ local function stop(tween: InternalTween)
 	-- Verify playback state.
 	if not tween.Playing then return end
 	
-	-- Set playing boolean.
+	-- Set playing state.
 	tween.Playing = nil
 	
 	-- Update instance values.
@@ -234,7 +254,7 @@ Tween.Start = function(tween: InternalTween)
 	-- Verify playback state.
 	if tween.Playing then return end
 	
-	-- Set playing boolean.
+	-- Set playing state.
 	tween.Playing = true
 	
 	-- Verify playback.

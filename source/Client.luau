@@ -2,16 +2,8 @@
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 
--- Directories.
-local root = script.Parent
-local data = root.Data
-local utilities = root.Utilities
-
--- Easing functions.
-local easingFunctions = require(utilities.EasingFunctions)
-
--- Updation functions.
-local getUpdateFunctions = require(utilities.UpdateFunctions)
+-- Attempt to find the plugin object.
+local plugin = script:FindFirstAncestorOfClass("Plugin")
 
 -- Signal library.
 local Signal = nil
@@ -31,9 +23,6 @@ else
 	if type(Signal) == "table" and Signal.new then Signal = Signal.new end
 end
 
--- Attempt to find the plugin object.
-local plugin = script:FindFirstAncestorOfClass("Plugin")
-
 -- Network packets and Roblox API map.
 local packets = nil
 local apiMap = nil
@@ -52,6 +41,17 @@ else -- Game context.
 	
 	apiMap = packets.GetAPIMap:Fire()
 end
+
+-- Directories.
+local root = script.Parent
+local data = root.Data
+local utilities = root.Utilities
+
+-- Easing functions.
+local easingFunctions = require(utilities.EasingFunctions)
+
+-- Updation functions.
+local getUpdateFunctions = require(utilities.UpdateFunctions)
 
 -- Options defaults.
 local defaults = require(data.Defaults)
@@ -78,7 +78,7 @@ local function stop(tween: InternalTween)
 	-- Verify playback state.
 	if not tween.Playing then return end
 	
-	-- Set playing boolean.
+	-- Set playing state.
 	tween.Playing = nil
 	
 	-- Tween removal.
@@ -133,7 +133,7 @@ local function start(tween: InternalTween, startOverride)
 	-- Verify playback state.
 	if tween.Playing then return end
 	
-	-- Set playing boolean.
+	-- Set playing state.
 	tween.Playing = true
 	
 	-- Handle conflicts.
@@ -286,118 +286,137 @@ Tween.Destroy = destroy
 
 -- Server tweening.
 if packets then
-	local serverTweens = table.create(256)
-	
-	local function serverDestroy(tween: InternalTween)
-		-- Disconnect destroy connection.
-		tween.DestroyConnection:Disconnect()
-		
-		-- Ensure no playback.
-		if not tween.StopTime then
-			-- Tween removal.
-			local lastIndex = #tweens
-			local index = tween.Index
-			if index == lastIndex then
-				tweens[lastIndex] = nil
-			else
-				local last = tweens[lastIndex]
-				last.Index = index
-				tweens[index] = last
-				tweens[lastIndex] = nil
-			end
-		end
-		
-		-- Clear tween data.
-		table.clear(tween)
-		-- Unlink methods.
-		setmetatable(tween, nil)
+	local requiredPackets = {
+		"CreateTween",
+		"StartTween",
+		"StopTween",
+		"ResetTween",
+		"DestroyTween"
+	}
+	local tweenPackets = {}
+	for _, name in requiredPackets do
+		if packets[name] then table.insert(tweenPackets, name) end
 	end
-	
-	packets.CreateTween.OnClientEvent:Connect(function(identifier, instance, values, options)
-		-- Argument errors.
-		if not instance then if RunService:IsStudio() then error("Could not find instance on client.") end return end
+	if #tweenPackets == #requiredPackets then
+		local serverTweens = table.create(256) -- Preallocate the maximum amount of tweens.
 		
-		-- Handle values.
-		local updateFunctions, resetFunctions = getUpdateFunctions(apiMap, instance, values)
+		local function serverDestroy(tween: InternalTween)
+			-- Disconnect destroy connection.
+			tween.DestroyConnection:Disconnect()
+			
+			-- Ensure no playback.
+			if not tween.StopTime then
+				-- Tween removal.
+				local lastIndex = #tweens
+				local index = tween.Index
+				if index == lastIndex then
+					tweens[lastIndex] = nil
+				else
+					local last = tweens[lastIndex]
+					last.Index = index
+					tweens[index] = last
+					tweens[lastIndex] = nil
+				end
+			end
+			
+			-- Clear tween data.
+			table.clear(tween)
+			-- Unlink methods.
+			setmetatable(tween, nil)
+		end
 		
-		-- Create tween.
-		local easingStyle = options[2]
-		local tween = nil
-		tween = {
-			-- Handle instance destroy.
-			DestroyConnection = instance.Destroying:Connect(function()
-				serverDestroy(tween)
-			end),
+		packets.CreateTween.OnClientEvent:Connect(function(identifier, instance, values, options)
+			-- Argument errors.
+			if not instance then if RunService:IsStudio() then error("Could not find instance on client.") end return end
 			
-			-- Main arguments.
-			Instance = instance,
-			Values = values,
+			-- Handle values.
+			local updateFunctions, resetFunctions = getUpdateFunctions(apiMap, instance, values)
 			
-			-- Value functions.
-			UpdateFunctions = updateFunctions,
-			ResetFunctions = resetFunctions,
+			-- Create tween.
+			local easingStyle = options[2]
+			local tween = nil
+			tween = {
+				-- Handle instance destroy.
+				DestroyConnection = instance.Destroying:Connect(function()
+					serverDestroy(tween)
+				end),
+				
+				-- Main arguments.
+				Instance = instance,
+				Values = values,
+				
+				-- Value functions.
+				UpdateFunctions = updateFunctions,
+				ResetFunctions = resetFunctions,
+				
+				-- Options.
+				InverseTweenTime = options[1] or defaults.InverseTime,
+				Ease = if easingStyle then
+					if easingStyle == "Linear" then easingFunctions.Linear else easingFunctions[easingStyle][options[3]]
+				else
+					easingFunctions.Linear,
+					DelayTime = options[4] or defaults.DelayTime,
+					Reverses = options[5] or defaults.Reverses,
+					RepeatCount = options[6] or defaults.RepeatCount,
+					Interval = options[7] or defaults.Interval,
+					
+					-- Time markers.
+					StartTime = 0,
+					StopTime = 0,
+					
+					-- Trackers.
+					Repetitions = 0
+			}
 			
-			-- Options.
-			InverseTweenTime = options[1] or defaults.InverseTime,
-			Ease = if easingStyle then
-				if easingStyle == "Linear" then easingFunctions.Linear else easingFunctions[easingStyle][options[3]]
-			else
-				easingFunctions.Linear,
-			DelayTime = options[4] or defaults.DelayTime,
-			Reverses = options[5] or defaults.Reverses,
-			RepeatCount = options[6] or defaults.RepeatCount,
-			Interval = options[7] or defaults.Interval,
-			
-			-- Time markers.
-			StartTime = 0,
-			StopTime = 0,
-			
-			-- Trackers.
-			Repetitions = 0
-		}
+			-- Store the tween with its given identifier.
+			serverTweens[identifier] = tween
+		end)
 		
-		-- Store the tween with its given identifier.
-		serverTweens[identifier] = tween
-	end)
-	
-	packets.StartTween.OnClientEvent:Connect(function(identifier, runTime, repetitions)
-		local tween = serverTweens[identifier]
-		if not tween then return end
-		
-		if repetitions then
-			tween.Repetitions = repetitions
-			if tween.Reverses then
-				tween.Reverse = if repetitions%2 == 1 then true else nil
+		packets.StartTween.OnClientEvent:Connect(function(identifier, runTime, repetitions)
+			local tween = serverTweens[identifier]
+			if not tween then return end
+			
+			if repetitions then
+				tween.Repetitions = repetitions
+				if tween.Reverses then
+					tween.Reverse = if repetitions%2 == 1 then true else nil
+				end
+			end
+			if tween.StopTime then
+				if runTime then
+					tween.StartTime = os.clock() - runTime
+					start(tween, true)
+				else
+					start(tween)
+				end
+			end
+		end)
+		packets.StopTween.OnClientEvent:Connect(function(identifier)
+			local tween = serverTweens[identifier]
+			if not tween then return end
+			
+			if not tween.StopTime then stop(tween) end
+		end)
+		packets.ResetTween.OnClientEvent:Connect(function(identifier)
+			local tween = serverTweens[identifier]
+			if not tween then return end
+			
+			if not tween.StopTime then stop(tween) end
+			for _, reset in tween.ResetFunctions do reset() end
+		end)
+		packets.DestroyTween.OnClientEvent:Connect(function(identifier)
+			local tween = serverTweens[identifier]
+			if not tween then return end
+			
+			serverDestroy(tween)
+		end)
+	else
+		if #tweenPackets > 0 and RunService:IsStudio() then
+			for _, name in requiredPackets do
+				if not tweenPackets[name] then warn("Packet '"..name.."' is missing for server tweening to work.") end
 			end
 		end
-		if tween.StopTime then
-			if runTime then
-				tween.StartTime = os.clock() - runTime
-				start(tween, true)
-			else
-				start(tween)
-			end
-		end
-	end)
-	packets.StopTween.OnClientEvent:Connect(function(identifier)
-		local tween = serverTweens[identifier]
-		if not tween then return end
-		
-		if not tween.StopTime then stop(tween) end
-	end)
-	packets.ResetTween.OnClientEvent:Connect(function(identifier)
-		local tween = serverTweens[identifier]
-		if not tween then return end
-		
-		if not tween.StopTime then stop(tween) end
-		for _, reset in tween.ResetFunctions do reset() end
-	end)
-	packets.DestroyTween.OnClientEvent:Connect(function(identifier)
-		local tween = serverTweens[identifier]
-		if not tween then return end
-		
-		serverDestroy(tween)
-	end)
+	end
 end
 
 -- Local tween creation.
