@@ -1,0 +1,19 @@
+[package]
+name = "taneelkins/tweenplus"
+version = "2.3.0-fork.1"
+description = "Fork of Tween+ (advanced tweening for Roblox) packaged for Wally."
+license = "MIT"
+authors = ["AlexanderLindholt"]
+realm = "shared"
+registry = "https://github.com/UpliftGames/wally-index"
+repository = "https://github.com/Taneelkins/TweenPlus.git"
+homepage = "https://alexanderlindholt.gitbook.io/tweenplus"
+
+[dependencies]
+# none
+
+[server-dependencies]
+# none
+
+[dev-dependencies]
+# optional (e.g., tests)
